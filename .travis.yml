@@ -1,0 +1,13 @@
+language: python
+python:
+  - "2.7"
+# command to install dependencies
+install:
+  - pip install -r requirements.txt
+  - pip install coveralls
+# command to run tests
+script:
+  cd worker/tests && coverage run --source="bin/" --omit="bin/graphite/*,bin/metrics/*" $(which trial) functional
+
+after_success:
+  coveralls
