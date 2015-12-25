@@ -1,0 +1,7 @@
+*.pyc
+_trial_temp
+twistd.pid
+.DS_Store
+log
+*.coverage
+*.coverprofile

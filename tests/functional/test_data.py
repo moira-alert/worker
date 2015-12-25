@@ -1,0 +1,571 @@
+import anyjson
+from . import trigger, WorkerTests
+from twisted.internet.defer import inlineCallbacks, returnValue
+from twisted.internet.task import deferLater
+from twisted.internet import reactor
+from twisted.web import http, client
+from twisted.web.http_headers import Headers
+from twisted.python.log import ILogObserver
+from StringIO import StringIO
+from checker.check import TriggersCheck
+from twisted.python import log
+from checker import state, check
+from metrics import spy
+import moira
+
+
+class DataTests(WorkerTests):
+
+    @inlineCallbacks
+    def sendTrigger(self, trigger):
+        body = client.FileBodyProducer(StringIO(trigger))
+        response = yield self.client.request('PUT', self.url_prefix + 'trigger/{0}'.format(self.trigger_id),
+                                             Headers({'Content-Type': ['application/json']}), body)
+        self.assertEqual(http.OK, response.code)
+        returnValue(anyjson.loads(trigger))
+
+    @inlineCallbacks
+    def deleteTrigger(self):
+        response = yield self.client.request('DELETE', self.url_prefix + 'trigger/{0}'.format(self.trigger_id))
+        self.assertEqual(http.OK, response.code)
+
+    def testCheckerServer(self):
+        from checker.server import application
+        application.setComponent(ILogObserver, moira.checker())
+
+    @trigger("bad-trigger")
+    @inlineCallbacks
+    def testTriggersCheckService(self):
+        service = TriggersCheck(self.db)
+        service.start()
+        yield self.db.saveTrigger(self.trigger_id, {})
+        yield self.db.addTriggerCheck(self.trigger_id)
+        check.ERROR_TIMEOUT = 0.01
+        yield deferLater(reactor, check.PERFORM_INTERVAL * 2, lambda: None)
+        self.flushLoggedErrors()
+        self.assertEqual(spy.TRIGGER_CHECK_ERRORS.get_metrics()["count"], 1)
+        yield service.stop()
+
+    @trigger("test-trigger-sum-series")
+    @inlineCallbacks
+    def testSumSeries(self):
+        pattern = 'MoiraFuncTest.supervisord.host.*.state'
+        metric1 = 'MoiraFuncTest.supervisord.host.one.state'
+        metric2 = 'MoiraFuncTest.supervisord.host.two.state'
+        metric3 = 'MoiraFuncTest.supervisord.host.three.state'
+        trigger = yield self.sendTrigger('{"name": "test trigger", "targets": ["sumSeries(' + pattern +
+                                         ')"], "warn_value": 20, "error_value": 50, "ttl":"600" }')
+        yield self.db.sendMetric(pattern, metric1, self.now - 1, 1)
+        yield self.db.sendMetric(pattern, metric2, self.now - 1, 2)
+        yield self.db.sendMetric(pattern, metric3, self.now - 1, 3)
+        yield self.protocol.messageReceived(None, "moira-func-test", '{"pattern":"' + pattern +
+                                            '", "metric":"' + metric3 + '"}')
+        yield self.check.perform()
+        yield self.assert_trigger_metric(trigger["targets"][0], 6, state.OK)
+
+    @trigger("test-trigger-exception")
+    @inlineCallbacks
+    def testTriggerException(self):
+        yield self.db.saveTrigger(self.trigger_id, {'warn_value': 0, 'error_value': 0})
+        yield self.db.addTriggerCheck(self.trigger_id)
+        yield TriggersCheck.check(self.db, self.trigger_id)
+        self.flushLoggedErrors()
+        events = yield self.db.getEvents()
+        self.assertEquals(1, len(events))
+        self.assertEquals(events[0]['state'], state.EXCEPTION)
+
+    @trigger('test-trigger-patterns')
+    @inlineCallbacks
+    def testTriggerPatterns(self):
+        pattern = 'MoiraFuncTest.supervisord.host.{4*,5*}.state'
+        metric1 = 'MoiraFuncTest.supervisord.host.400.state'
+        metric2 = 'MoiraFuncTest.supervisord.host.500.state'
+        yield self.sendTrigger('{"name": "test trigger", "targets": ["movingAverage(' +
+                               pattern + ',10)"], "warn_value": 20, "error_value": 50, "ttl":"600" }')
+        json, trigger = yield self.db.getTrigger(self.trigger_id)
+        self.assertEquals([pattern], trigger["patterns"])
+        yield self.db.sendMetric(pattern, metric1, self.now, 1)
+        yield self.db.sendMetric(pattern, metric2, self.now, 1)
+        yield self.db.sendMetric(pattern, metric1, self.now - 60, 1)
+        yield self.db.sendMetric(pattern, metric2, self.now - 60, 1)
+        yield TriggersCheck.check(self.db, self.trigger_id)
+        yield self.assert_trigger_metric('movingAverage(' +
+                                         metric1 + ',10)', 1, state.OK)
+        yield self.assert_trigger_metric('movingAverage(' +
+                                         metric2 + ',10)', 1, state.OK)
+        yield self.sendTrigger('{"name": "test trigger", "targets": ["movingAverage(' +
+                               pattern + ',10)"], "warn_value": 20, "error_value": 50, "ttl":"600" }')
+        json, trigger = yield self.db.getTrigger(self.trigger_id)
+        self.assertEquals([pattern], trigger["patterns"])
+
+    @trigger('test-trigger-expression')
+    @inlineCallbacks
+    def testTriggerExpression(self):
+        metric1 = 'MoiraFuncTest.one'
+        metric2 = 'MoiraFuncTest.two'
+        yield self.sendTrigger('{"name": "test trigger", "targets": ["' + metric1 + '", \
+                               "' + metric2 + '"], \
+                               "expression": "ERROR if t1 > t2 else OK", \
+                               "warn_value": 20, "error_value": 50, "ttl":"600" }')
+        json, trigger = yield self.db.getTrigger(self.trigger_id)
+        yield self.db.sendMetric(metric1, metric1, self.now - 60, 1)
+        yield self.db.sendMetric(metric2, metric2, self.now - 60, 2)
+        yield TriggersCheck.check(self.db, self.trigger_id)
+        yield self.assert_trigger_metric(metric1, 1, state.OK)
+        yield self.db.sendMetric(metric1, metric1, self.now, 2)
+        yield self.db.sendMetric(metric2, metric2, self.now, 1)
+        yield TriggersCheck.check(self.db, self.trigger_id)
+        yield self.assert_trigger_metric(metric1, 2, state.ERROR)
+
+    @trigger('test-trigger-patterns2')
+    @inlineCallbacks
+    def testTriggerPatterns2(self):
+        metric = 'MoiraFuncTest.supervisord.host.state'
+        yield self.sendTrigger('{"name": "test trigger", "targets": ["movingAverage(' +
+                               metric + ', 10)"], "warn_value": 20, "error_value": 50, "ttl":"600" }')
+        json, trigger = yield self.db.getTrigger(self.trigger_id)
+        self.assertEquals([metric], trigger["patterns"])
+        yield self.db.sendMetric(metric, metric, self.now - 60, 1)
+        yield TriggersCheck.check(self.db, self.trigger_id)
+        yield self.assert_trigger_metric('movingAverage(' +
+                                         metric + ',10)', 1, state.OK)
+        yield self.sendTrigger('{"name": "test trigger", "targets": ["movingAverage(transformNull(' +
+                               metric + ', 0), 10)"], "warn_value": 20, "error_value": 50, "ttl":"600" }')
+        json, trigger = yield self.db.getTrigger(self.trigger_id)
+        self.assertEquals([metric], trigger["patterns"])
+
+    @trigger('test-trigger-patterns3')
+    @inlineCallbacks
+    def testTriggerPatterns3(self):
+        pattern = 'MoiraFuncTest.supervisord.*.*.state.node'
+        yield self.sendTrigger('{"name": "test trigger", "targets": ["movingAverage(groupByNode(' +
+                               pattern + ',2,\'maxSeries\'),10)"],' +
+                               '"warn_value": 20, "error_value": 50, "ttl":"600" }')
+        json, trigger = yield self.db.getTrigger(self.trigger_id)
+        self.assertEquals([pattern], trigger["patterns"])
+
+    @trigger('test-trigger-exclude')
+    @inlineCallbacks
+    def testExclude(self):
+        pattern = 'MoiraFuncTest.supervisord.host.*.state'
+        metric1 = 'MoiraFuncTest.supervisord.host.one.state'
+        metric2 = 'MoiraFuncTest.supervisord.host.two.state'
+        yield self.sendTrigger('{"name": "test trigger", "targets": ["exclude(' + pattern +
+                               ', \'two\')"], "warn_value": 20, "error_value": 50, "ttl":"600" }')
+        yield self.db.sendMetric(pattern, metric1, self.now - 60, 1)
+        yield self.db.sendMetric(pattern, metric2, self.now - 60, 60)
+        yield TriggersCheck.check(self.db, self.trigger_id)
+        yield self.assert_trigger_metric(metric1, 1, state.OK)
+        yield self.assert_trigger_metric(metric2, None, None)
+
+    @trigger('test-trigger-transformNull')
+    @inlineCallbacks
+    def testTransformNull(self):
+        pattern = 'MoiraFuncTest.supervisord.host.*.state'
+        metric1 = 'MoiraFuncTest.supervisord.host.one.state'
+        yield self.sendTrigger(trigger='{"name": "test trigger", "targets": ["movingAverage(transformNull(' + pattern +
+                               ', 0),2)"], "warn_value": 20, "error_value": 50, "ttl":"600" }')
+        yield self.db.sendMetric(pattern, metric1, self.now - 180, 5)
+        yield self.db.sendMetric(pattern, metric1, self.now - 60, 5)
+        yield TriggersCheck.check(self.db, self.trigger_id)
+        yield self.assert_trigger_metric('movingAverage(transformNull(' + metric1 + ',0),2)', 2.5, state.OK)
+
+    @trigger('test-trigger-alias-max')
+    @inlineCallbacks
+    def testAliasMaxSeries(self):
+        pattern = 'MoiraFuncTest.supervisord.host.*.state'
+        metric1 = 'MoiraFuncTest.supervisord.host.one.state'
+        metric2 = 'MoiraFuncTest.supervisord.host.two.state'
+        metric3 = 'MoiraFuncTest.supervisord.host.three.state'
+        yield self.sendTrigger('{"name": "test trigger", "targets": ["alias(maxSeries(' + pattern +
+                               '), \'node\')"],  "warn_value": 20, "error_value": 50, "ttl":"600" }')
+        yield self.db.sendMetric(pattern, metric1, self.now - 5, 0)
+        yield self.db.sendMetric(pattern, metric2, self.now - 5, 10)
+        yield self.db.sendMetric(pattern, metric3, self.now - 5, 80)
+        yield self.protocol.messageReceived(None, "moira-func-test", '{"pattern":"' + pattern +
+                                            '", "metric":"' + metric3 + '"}')
+        yield self.check.perform()
+        yield self.assert_trigger_metric('node', 80, state.ERROR)
+
+    @trigger('test-trigger-summarize-sum')
+    @inlineCallbacks
+    def testSummarizeSum(self):
+        pattern = 'MoiraFuncTest.supervisord.host.*.state'
+        metric = 'MoiraFuncTest.supervisord.host.one.state'
+        yield self.sendTrigger('{"name": "test trigger", "targets": ["summarize(' + pattern +
+                               ', \'10min\', \'sum\', false)"],  "warn_value": 20, "error_value": 50, "ttl":"3600" }')
+        begin = self.now - self.now % 3600
+        yield self.db.sendMetric(pattern, metric, begin, 10)
+        yield self.db.sendMetric(pattern, metric, begin + 60, 20)
+        yield self.db.sendMetric(pattern, metric, begin + 120, 30)
+        yield TriggersCheck.check(self.db, self.trigger_id, fromTime=begin, now=begin + 120)
+        yield self.assert_trigger_metric('summarize(' + metric +
+                                         ', "10min", "sum")', 60, state.ERROR)
+
+    @trigger('test-trigger-summarize-min')
+    @inlineCallbacks
+    def testSummarizeMin(self):
+        metric = 'MoiraFuncTest.supervisord.host.one.state'
+        yield self.sendTrigger('{"name": "test trigger", "targets": ["summarize(' + metric +
+                               ', \'10min\', \'min\')"],  "warn_value": 0.001, "error_value": 50, "ttl":"3600" }')
+        begin = self.now - self.now % 600
+        yield self.db.sendMetric(metric, metric, begin + 1, 10)
+        yield TriggersCheck.check(self.db, self.trigger_id, fromTime=begin, now=begin + 600)
+        yield self.assert_trigger_metric('summarize(' + metric +
+                                         ', "10min", "min")', 10, state.WARN)
+
+    @trigger('test-trigger-aliasbynode')
+    @inlineCallbacks
+    def testAliasByNode(self):
+        pattern = 'MoiraFuncTest.supervisord.host.*.state'
+        metric1 = 'MoiraFuncTest.supervisord.host.one.state'
+        yield self.sendTrigger('{"name": "test trigger", "targets": ["aliasByNode(' + pattern +
+                               ', 3)"],  "warn_value": 20, "error_value": 50, "ttl":"600" }')
+        yield self.db.sendMetric(pattern, metric1, self.now - 60, 30)
+        yield TriggersCheck.check(self.db, self.trigger_id)
+        yield self.assert_trigger_metric('one', 30, state.WARN)
+
+    @trigger('test-trigger-group')
+    @inlineCallbacks
+    def testGroupBy(self):
+        pattern = 'MoiraFuncTest.supervisord.host.*.state'
+        metric1 = 'MoiraFuncTest.supervisord.host.one.state'
+        metric2 = 'MoiraFuncTest.supervisord.host.two.state'
+        metric3 = 'MoiraFuncTest.supervisord.host.three.state'
+        yield self.sendTrigger('{"name": "test trigger", "targets": ["groupByNode(' + pattern +
+                               ',4,\'averageSeries\')"],  "warn_value": 20, "error_value": 50, "ttl":"600" }')
+        yield self.db.sendMetric(pattern, metric1, self.now - 1, 0)
+        yield self.db.sendMetric(pattern, metric2, self.now - 1, 10)
+        yield self.db.sendMetric(pattern, metric3, self.now - 1, 80)
+        yield TriggersCheck.check(self.db, self.trigger_id)
+        yield self.assert_trigger_metric('state', 30, state.WARN)
+
+    @trigger('test-trigger-min-series')
+    @inlineCallbacks
+    def testMinSeries(self):
+        pattern = 'MoiraFuncTest.supervisord.host.*.state'
+        metric1 = 'MoiraFuncTest.supervisord.host.one.state'
+        metric2 = 'MoiraFuncTest.supervisord.host.two.state'
+        metric3 = 'MoiraFuncTest.supervisord.host.three.state'
+        yield self.sendTrigger('{"name": "test trigger", "targets": ["minSeries(' + pattern +
+                               ')"],  "warn_value": 20, "error_value": 50, "ttl":"600" }')
+        yield self.db.sendMetric(pattern, metric1, self.now - 1, 5)
+        yield self.db.sendMetric(pattern, metric2, self.now - 1, 10)
+        yield self.db.sendMetric(pattern, metric3, self.now - 1, 80)
+        yield TriggersCheck.check(self.db, self.trigger_id)
+        yield self.assert_trigger_metric('minSeries(' + pattern +
+                                         ')', 5, state.OK)
+
+    @trigger('test-trigger-moving-average')
+    @inlineCallbacks
+    def testMovingAverage(self):
+        metric = 'MoiraFuncTest.system.test.physicaldisk.one-drive.diskqueuelength'
+        yield self.sendTrigger('{"name": "test trigger", "targets": ["movingAverage(' + metric +
+                               ',3)"],  "warn_value": 20, "error_value": 30, "ttl":"600" }')
+        yield self.db.sendMetric(metric, metric, self.now - 180, 10)
+        yield self.db.sendMetric(metric, metric, self.now - 120, 20)
+        yield self.db.sendMetric(metric, metric, self.now - 60, 30)
+        yield TriggersCheck.check(self.db, self.trigger_id, now=self.now)
+        yield self.assert_trigger_metric('movingAverage(' + metric +
+                                         ',3)', 20, state.WARN)
+        yield self.db.sendMetric(metric, metric, self.now, 40)
+        yield TriggersCheck.check(self.db, self.trigger_id, now=self.now + 10)
+        yield self.assert_trigger_metric('movingAverage(' + metric +
+                                         ',3)', 30, state.ERROR)
+
+    @trigger('test-trigger-moving-average-min')
+    @inlineCallbacks
+    def testMovingAverageMin(self):
+        metric = 'MoiraFuncTest.system.test.physicaldisk.one-drive.diskqueuelength'
+        yield self.sendTrigger('{"name": "test trigger", "targets": ["movingAverage(' + metric +
+                               ',3, \\"min\\")"],  "warn_value": 20, "error_value": 30, "ttl":"600" }')
+        yield self.db.sendMetric(metric, metric, self.now - 180, 10)
+        yield self.db.sendMetric(metric, metric, self.now - 120, 20)
+        yield self.db.sendMetric(metric, metric, self.now - 60, 30)
+        yield TriggersCheck.check(self.db, self.trigger_id, now=self.now)
+        yield self.assert_trigger_metric('movingAverage(' + metric +
+                                         ',3)', 10, state.OK)
+        yield self.db.sendMetric(metric, metric, self.now, 40)
+        yield TriggersCheck.check(self.db, self.trigger_id, now=self.now + 10)
+        yield self.assert_trigger_metric('movingAverage(' + metric +
+                                         ',3)', 20, state.WARN)
+
+    @trigger('test-mem-free')
+    @inlineCallbacks
+    def testMemoryCalculation(self):
+        metric1 = 'MoiraFuncTest.system.vm-graphite2.memory.Cached'
+        metric2 = 'MoiraFuncTest.system.vm-graphite2.memory.MemFree'
+        metric3 = 'MoiraFuncTest.system.vm-graphite2.memory.MemTotal'
+        yield self.sendTrigger('{"name": "test trigger", "targets": ["scale(divideSeries(sum(movingAverage(' + metric2 +
+                               ',3),movingAverage(' + metric1 + ',3)),movingAverage(' + metric3 +
+                               ',3)),100)"],  "warn_value": 60, "error_value": 90, "ttl":"600" }')
+        yield self.db.sendMetric(metric1, metric1, self.now - 1, 1000)
+        yield self.db.sendMetric(metric2, metric2, self.now - 1, 1000)
+        yield self.db.sendMetric(metric3, metric3, self.now - 1, 4000)
+        yield TriggersCheck.check(self.db, self.trigger_id)
+        yield self.assert_trigger_metric(1, 50, state.OK)
+
+    @trigger('test-events')
+    @inlineCallbacks
+    def testEventGeneration(self):
+        metric = 'MoiraFuncTest.metric.one'
+        yield self.sendTrigger('{"name": "test trigger", "targets": ["' + metric +
+                               '"],  "warn_value": 60, "error_value": 90, "ttl":"600" }')
+        yield self.db.sendMetric(metric, metric, self.now - 180, 1000)
+        yield self.db.sendMetric(metric, metric, self.now - 60, 1000)
+        yield TriggersCheck.check(self.db, self.trigger_id)
+        yield self.db.sendMetric(metric, metric, self.now, 10)
+        yield self.protocol.messageReceived(None, "moira-func-test", '{"pattern":"' + metric +
+                                            '", "metric":"' + metric + '"}', nocache=True)
+        yield TriggersCheck.check(self.db, self.trigger_id, now=self.now + 1)
+        events = yield self.db.getEvents()
+        self.assertEquals(len(events), 2)
+        self.assertEquals(events[0]["state"], state.OK)
+        self.assertEquals(events[1]["state"], state.ERROR)
+
+    @trigger('test-events2')
+    @inlineCallbacks
+    def testEventGeneration2(self):
+        metric = 'MoiraFuncTest.metric.one'
+        yield self.sendTrigger('{"name": "test trigger", "targets": ["' + metric +
+                               '"],  "warn_value": 60, "error_value": 90, "ttl":"600" }')
+        yield self.db.sendMetric(metric, metric, self.now - 180, 1000)
+        yield self.db.sendMetric(metric, metric, self.now - 60, 1000)
+        yield TriggersCheck.check(self.db, self.trigger_id)
+        yield TriggersCheck.check(self.db, self.trigger_id)
+        yield TriggersCheck.check(self.db, self.trigger_id)
+        events = yield self.db.getEvents()
+        self.assertEquals(len(events), 1)
+        self.assertEquals(events[0]["state"], state.ERROR)
+
+    @trigger('test-events3')
+    @inlineCallbacks
+    def testEventGeneration3(self):
+        metric = 'MoiraFuncTest.metric.one'
+        yield self.sendTrigger('{"name": "test trigger", "targets": ["' + metric +
+                               '"],  "warn_value": 1, "error_value": 5, "ttl":"600", "ttl_state": "OK" }')
+        yield self.db.sendMetric(metric, metric, self.now - 1, 1)
+        yield TriggersCheck.check(self.db, self.trigger_id)
+        self.assert_trigger_metric(metric, 1, state.WARN)
+        yield TriggersCheck.check(self.db, self.trigger_id, now=self.now + 120)
+        self.assert_trigger_metric(metric, 1, state.WARN)
+        yield TriggersCheck.check(self.db, self.trigger_id, now=self.now + 601)
+        yield TriggersCheck.check(self.db, self.trigger_id, now=self.now + 602)
+        self.assert_trigger_metric(metric, None, state.OK)
+        events = yield self.db.getEvents()
+        self.assertEquals(len(events), 2)
+        self.assertEquals(events[0]["state"], state.OK)
+        self.assertEquals(events[0]["metric"], metric)
+        self.assertNotIn("value", events[0])
+        self.assertEquals(events[1]["state"], state.WARN)
+        self.assertEquals(events[1]["metric"], metric)
+        self.assertEquals(events[1]["value"], 1)
+
+    @trigger('test-event-schedule')
+    @inlineCallbacks
+    def testEventSchedule(self):
+        metric = 'MoiraFuncTest.metric.one'
+        yield self.sendTrigger('{"name": "test trigger", "targets": ["' + metric +
+                               '"],  "warn_value": 1, "error_value": 5, "ttl":"600", "ttl_state": "OK", \
+                               "sched":{"days":[ \
+                               {"enabled":false,"name":"Mon"}, \
+                               {"enabled":true,"name":"Tue"}, \
+                               {"enabled":true,"name":"Wed"}, \
+                               {"enabled":true,"name":"Thu"}, \
+                               {"enabled":true,"name":"Fri"}, \
+                               {"enabled":true,"name":"Sat"}, \
+                               {"enabled":false,"name":"Sun"}], \
+                               "startOffset":0, \
+                               "endOffset":1439, \
+                               "tzOffset":0}}')
+
+        # generate event
+        yield self.db.sendMetric(metric, metric, 1444471200, 1)  # Saturday @ 10:00am (UTC)
+        yield TriggersCheck.check(self.db, self.trigger_id, now=1444471200)
+        self.assert_trigger_metric(metric, 1, state.WARN)
+
+        # don't generate event
+        yield self.db.sendMetric(metric, metric, 1444644000, 10)  # Monday @ 10:00am (UTC)
+        yield TriggersCheck.check(self.db, self.trigger_id, now=1444644000)
+        self.assert_trigger_metric(metric, 10, state.ERROR)
+
+        events = yield self.db.getEvents()
+        self.assertEquals(len(events), 1)
+
+        # generate missed event
+        yield self.db.sendMetric(metric, metric, 1444730400, 10)  # Tuesday @ 10:00am (UTC)
+        yield TriggersCheck.check(self.db, self.trigger_id, now=1444730400)
+        self.assert_trigger_metric(metric, 10, state.ERROR)
+
+        # check event not duplicated
+        yield self.db.sendMetric(metric, metric, 1444730460, 11)  # Tuesday @ 10:01am (UTC)
+        yield TriggersCheck.check(self.db, self.trigger_id, now=1444730460)
+        self.assert_trigger_metric(metric, 11, state.ERROR)
+
+        events = yield self.db.getEvents()
+        self.assertEquals(len(events), 2)
+
+    @trigger('test-ttl')
+    @inlineCallbacks
+    def testTTLExpiration(self):
+        metric = 'MoiraFuncTest.metric.one'
+        yield self.sendTrigger('{"name": "test trigger", "targets": ["' +
+                               metric + '"], "warn_value": 60, "error_value": 90, "ttl":60 }')
+        yield self.db.sendMetric(metric, metric, self.now - 180, 1000)
+        yield TriggersCheck.check(self.db, self.trigger_id)
+        yield self.assert_trigger_metric(metric, 1000, state.ERROR)
+        yield TriggersCheck.check(self.db, self.trigger_id)
+        yield self.assert_trigger_metric(metric, None, state.NODATA)
+        yield self.db.sendMetric(metric, metric, self.now, 10)
+        yield TriggersCheck.check(self.db, self.trigger_id, now=self.now + 1)
+        yield self.assert_trigger_metric(metric, 10, state.OK)
+        yield TriggersCheck.check(self.db, self.trigger_id, now=self.now + 61)
+        events = yield self.db.getEvents()
+        self.assertEquals(len(events), 3)
+        self.assertEquals(events[0]["state"], state.OK)
+        self.assertEquals(events[1]["state"], state.NODATA)
+        self.assertEquals(events[2]["state"], state.ERROR)
+
+    @trigger('test-ttl')
+    @inlineCallbacks
+    def testTTLExpiration2(self):
+        pattern = 'MoiraFuncTest.metric.*'
+        metric1 = 'MoiraFuncTest.metric.one'
+        metric2 = 'MoiraFuncTest.metric.two'
+        yield self.sendTrigger('{"name": "test trigger", "targets": ["sumSeries(' + pattern + ')"], \
+                               "warn_value": 60, "error_value": 90, "ttl":120 }')
+        yield self.db.sendMetric(pattern, metric1, self.now - 3600, 5)
+        yield self.db.sendMetric(pattern, metric2, self.now - 60, 5)
+        yield TriggersCheck.check(self.db, self.trigger_id)
+        yield self.assert_trigger_metric('sumSeries(' + pattern + ')', 5, state.OK)
+        yield self.db.cleanupMetricValues(metric2, self.now)
+        yield TriggersCheck.check(self.db, self.trigger_id, now=self.now + 61)
+        yield self.assert_trigger_metric('sumSeries(' + pattern + ')', 5, state.OK)
+        yield TriggersCheck.check(self.db, self.trigger_id, now=self.now + 62)
+        yield self.assert_trigger_metric('sumSeries(' + pattern + ')', None, state.NODATA)
+
+    @trigger('test-ttl')
+    @inlineCallbacks
+    def testTTLExpiration3(self):
+        metric = 'MoiraFuncTest.metric.one'
+        yield self.sendTrigger('{"name": "test trigger", "targets": ["' +
+                               metric + '"], "warn_value": 1, "error_value": 5, "ttl":600, "ttl_state":"OK" }')
+        yield self.db.sendMetric(metric, metric, self.now - 2400, 1)
+        yield TriggersCheck.check(self.db, self.trigger_id, now=self.now - 2400)
+        yield self.assert_trigger_metric(metric, 1, state.WARN)
+        yield TriggersCheck.check(self.db, self.trigger_id, now=self.now - 2200)
+        yield TriggersCheck.check(self.db, self.trigger_id, now=self.now - 1000)
+        yield TriggersCheck.check(self.db, self.trigger_id, now=self.now)
+        yield self.assert_trigger_metric(metric, None, state.OK)
+        yield self.db.sendMetric(metric, metric, self.now, 1)
+        yield TriggersCheck.check(self.db, self.trigger_id, now=self.now)
+        yield self.assert_trigger_metric(metric, 1, state.WARN)
+        yield TriggersCheck.check(self.db, self.trigger_id, now=self.now + 1)
+
+    @trigger('test-ttl')
+    @inlineCallbacks
+    def testTTLExpiration4(self):
+        metric = 'MoiraFuncTest.metric.one'
+        yield self.sendTrigger('{"name": "test trigger", "targets": ["' +
+                               metric + '"], "warn_value": 60, "error_value": 90, "ttl":60 }')
+        yield self.db.sendMetric(metric, metric, self.now - 180, 1000)
+        yield TriggersCheck.check(self.db, self.trigger_id)
+        yield self.assert_trigger_metric(metric, 1000, state.ERROR)
+        yield self.db.sendMetric(metric, metric, self.now - 120, 1000)
+        yield TriggersCheck.check(self.db, self.trigger_id)
+        yield self.assert_trigger_metric(metric, None, state.NODATA)
+
+    @trigger('test-map-reduce')
+    @inlineCallbacks
+    def testMapReduce(self):
+        pattern = 'MoiraFuncTest.*.metric.{free,total}'
+        metric1 = 'MoiraFuncTest.one.metric.free'
+        metric2 = 'MoiraFuncTest.one.metric.total'
+        metric3 = 'MoiraFuncTest.two.metric.free'
+        metric4 = 'MoiraFuncTest.two.metric.total'
+        yield self.sendTrigger('{"name": "test trigger", "targets": \
+                               ["aliasByNode(reduceSeries(mapSeries(' + pattern + ',1), \
+                               \\"asPercent\\",3,\\"free\\",\\"total\\"),1)"], \
+                               "warn_value": 60, "error_value": 90 }')
+        yield self.db.sendMetric(pattern, metric1, self.now - 1, 60)
+        yield self.db.sendMetric(pattern, metric2, self.now - 1, 100)
+        yield self.db.sendMetric(pattern, metric3, self.now - 1, 30)
+        yield self.db.sendMetric(pattern, metric4, self.now - 1, 60)
+        yield TriggersCheck.check(self.db, self.trigger_id)
+        yield self.assert_trigger_metric('one', 60, state.WARN)
+        yield self.assert_trigger_metric('two', 50, state.OK)
+
+    @trigger('test-trigger-cleanup')
+    @inlineCallbacks
+    def testMetricsCleanup(self):
+        metric = 'MoiraFuncTest.metric.one'
+        yield self.sendTrigger('{"name": "test trigger", "targets": ["' +
+                               metric + '"], "warn_value": 60, "error_value": 90 }')
+        yield self.db.sendMetric(metric, metric, self.now - 3600, 1)
+        yield self.db.sendMetric(metric, metric, self.now - 60, 1)
+        yield TriggersCheck.check(self.db, self.trigger_id, now=self.now + 60, cache_ttl=0)
+        yield self.assert_trigger_metric(metric, 1, state.OK)
+        values = yield self.db.getMetricValues(metric, self.now - 3600)
+        self.assertEquals(len(values), 1)
+        yield self.deleteTrigger()
+        values = yield self.db.getMetricValues(metric, self.now - 3600)
+        self.assertEquals(len(values), 0)
+
+    @trigger('test-schedule')
+    @inlineCallbacks
+    def testTriggerSchedule(self):
+        metric = 'MoiraFuncTest.metric.one'
+        yield self.sendTrigger('{"name": "test trigger", "targets": ["' +
+                               metric + '"], "warn_value": 60, "error_value": 90, \
+                               "sched":{"days":[ \
+                               {"enabled":true,"name":"Mon"}, \
+                               {"enabled":true,"name":"Tue"}, \
+                               {"enabled":true,"name":"Wed"}, \
+                               {"enabled":true,"name":"Thu"}, \
+                               {"enabled":true,"name":"Fri"}, \
+                               {"enabled":true,"name":"Sat"}, \
+                               {"enabled":true,"name":"Sun"}], \
+                               "startOffset":480, \
+                               "endOffset":1199, \
+                               "tzOffset":-300}}')
+
+        day_begin = self.now - self.now % (3600 * 24)
+        json, trigger = yield self.db.getTrigger(self.trigger_id)
+        self.assertFalse(TriggersCheck.isTriggerSchedEnabled(trigger, day_begin + 3 * 3600 - 1))
+        self.assertTrue(TriggersCheck.isTriggerSchedEnabled(trigger, day_begin + 3 * 3600))
+        self.assertTrue(TriggersCheck.isTriggerSchedEnabled(trigger, day_begin + 15 * 3600 - 1))
+        self.assertFalse(TriggersCheck.isTriggerSchedEnabled(trigger, day_begin + 15 * 3600))
+
+    @trigger('test-schedule2')
+    @inlineCallbacks
+    def testTriggerSchedule2(self):
+        metric = 'MoiraFuncTest.metric.one'
+        yield self.sendTrigger('{"name": "test trigger", "targets": ["' +
+                               metric + '"], "warn_value": 60, "error_value": 90, \
+                               "sched":{"days":[ \
+                               {"enabled":true,"name":"Mon"}, \
+                               {"enabled":true,"name":"Tue"}, \
+                               {"enabled":true,"name":"Wed"}, \
+                               {"enabled":true,"name":"Thu"}, \
+                               {"enabled":true,"name":"Fri"}, \
+                               {"enabled":true,"name":"Sat"}, \
+                               {"enabled":true,"name":"Sun"}], \
+                               "startOffset":0, \
+                               "endOffset":1439, \
+                               "tzOffset": -300}}')
+
+        day_begin = self.now - self.now % (3600 * 24)
+        json, trigger = yield self.db.getTrigger(self.trigger_id)
+        for h in range(0, 24):
+            self.assertTrue(TriggersCheck.isTriggerSchedEnabled(trigger, day_begin + 3600 * h))
+
+    @inlineCallbacks
+    def assert_trigger_metric(self, metric, value, state):
+        check = yield self.db.getTriggerLastCheck(self.trigger_id)
+        log.msg("Received check: %s" % check)
+        self.assertIsNot(check, None)
+        metric = [m for m in check["metrics"].itervalues()][0] \
+            if isinstance(metric, int) \
+            else check["metrics"].get(metric, {})
+        self.assertEquals(value, metric.get("value"))
+        self.assertEquals(state, metric.get("state"))
