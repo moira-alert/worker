@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/moira-alert/worker.svg?branch=master)](https://travis-ci.org/moira-alert/worker)
+
 # worker
 moira api and checker modules
 
