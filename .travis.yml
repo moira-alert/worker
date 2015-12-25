@@ -7,7 +7,7 @@ install:
   - pip install coveralls
 # command to run tests
 script:
-  cd worker/tests && coverage run --source="bin/" --omit="bin/graphite/*,bin/metrics/*" $(which trial) functional
+  cd tests && coverage run --source="bin/" --omit="bin/graphite/*,bin/metrics/*" $(which trial) functional
 
 after_success:
   coveralls
