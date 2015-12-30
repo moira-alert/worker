@@ -1,13 +1,5 @@
 import sys
 import os
-sys.path.append(
-    os.path.abspath(
-        os.path.join(
-            os.path.abspath(
-                os.path.dirname(__file__)),
-            '..')))
-
-import state
 import expression
 import random
 from datetime import datetime, timedelta
@@ -15,11 +7,12 @@ from time import time
 from twisted.python import log
 from twisted.python.logfile import DailyLogFile
 from twisted.internet import defer, reactor, task
-from graphite.evaluator import evaluateTarget
-from graphite import datalib
-from metrics import spy, graphite
-from db import Db
-import config
+from moira.graphite.evaluator import evaluateTarget
+from moira.graphite import datalib
+from moira.metrics import spy, graphite
+from moira.db import Db
+from moira import config
+from moira.checker import state
 
 
 PERFORM_INTERVAL = 0.01

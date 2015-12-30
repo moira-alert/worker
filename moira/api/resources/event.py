@@ -1,6 +1,6 @@
-from api.request import delayed
+from moira.api.request import delayed
 from twisted.internet import defer
-from redis import RedisResouce
+from moira.api.resources.redis import RedisResouce
 
 
 class Events(RedisResouce):

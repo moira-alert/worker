@@ -1,17 +1,17 @@
 import anyjson
 from . import trigger, WorkerTests
+from StringIO import StringIO
 from twisted.internet.defer import inlineCallbacks, returnValue
 from twisted.internet.task import deferLater
 from twisted.internet import reactor
 from twisted.web import http, client
 from twisted.web.http_headers import Headers
 from twisted.python.log import ILogObserver
-from StringIO import StringIO
-from checker.check import TriggersCheck
 from twisted.python import log
-from checker import state, check
-from metrics import spy
-import moira
+from moira.checker import state, check
+from moira.checker.check import TriggersCheck
+from moira.metrics import spy
+from moira import logs
 
 
 class DataTests(WorkerTests):
@@ -30,8 +30,8 @@ class DataTests(WorkerTests):
         self.assertEqual(http.OK, response.code)
 
     def testCheckerServer(self):
-        from checker.server import application
-        application.setComponent(ILogObserver, moira.checker())
+        from moira.checker.server import application
+        application.setComponent(ILogObserver, logs.checker())
 
     @trigger("bad-trigger")
     @inlineCallbacks

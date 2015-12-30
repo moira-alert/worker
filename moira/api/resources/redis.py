@@ -1,7 +1,7 @@
 import anyjson
 from twisted.web.resource import Resource
-from api.request import check_trigger, check_json
 from twisted.internet import defer
+from moira.api.request import check_trigger, check_json
 
 
 class RedisResouce(Resource):

@@ -1,9 +1,9 @@
-from api.request import delayed
+from moira.api.request import delayed
 from twisted.internet import defer
-from redis import RedisResouce
-from graphite.evaluator import evaluateTarget
-from graphite.datalib import createRequestContext
-from api.request import bad_request
+from moira.api.resources.redis import RedisResouce
+from moira.graphite.evaluator import evaluateTarget
+from moira.graphite.datalib import createRequestContext
+from moira.api.request import bad_request
 
 
 class Metrics(RedisResouce):

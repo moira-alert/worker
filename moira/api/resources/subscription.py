@@ -1,8 +1,8 @@
 from twisted.internet import defer
-from redis import RedisResouce
-from api.request import delayed, check_json
-from graphite.attime import parseATTime
-from graphite.util import epoch
+from moira.api.resources.redis import RedisResouce
+from moira.api.request import delayed, check_json
+from moira.graphite.attime import parseATTime
+from moira.graphite.util import epoch
 
 
 class Test(RedisResouce):

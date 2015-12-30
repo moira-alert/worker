@@ -5,20 +5,19 @@ sys.path.append(
         os.path.join(
             os.path.abspath(
                 os.path.dirname(__file__)),
-            '../../bin')))
-
+            '../../')))
+from fakeredis import FakeStrictRedis, FakePipeline
+from StringIO import StringIO
 from twisted.trial import unittest
 from twisted.python import log
 from twisted.web import client
 from twisted.internet import reactor, protocol
 from twisted.internet.defer import Deferred, inlineCallbacks
-from StringIO import StringIO
-from api.site import Site
-from checker.subscriber import SubscriberProtocol
-from graphite import datalib
-from checker.check import TriggersCheck
-from fakeredis import FakeStrictRedis, FakePipeline
-import db
+from moira.api.site import Site
+from moira.checker.subscriber import SubscriberProtocol
+from moira.graphite import datalib
+from moira.checker.check import TriggersCheck
+from moira import db
 
 
 def trigger(trigger_id):

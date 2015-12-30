@@ -1,11 +1,11 @@
 import anyjson
-import moira
 from time import time
 from twisted.python import log
 from twisted.internet import defer
 from twisted.web import http, server
-from graphite.evaluator import evaluateTarget
-from graphite.datalib import createRequestContext
+from moira.graphite.evaluator import evaluateTarget
+from moira.graphite.datalib import createRequestContext
+from moira.trigger import trigger_reformat
 
 
 def bad_request(request, message):
@@ -43,7 +43,7 @@ def check_trigger(f):
                         "%s is required" %
                         field))
         try:
-            request.body_json = moira.reformat_trigger(json, json.get("id"), json.get("tags", []))
+            request.body_json = trigger_reformat(json, json.get("id"), json.get("tags", []))
         except:
             log.err()
             defer.returnValue(bad_request(request, "Invalid trigger format"))

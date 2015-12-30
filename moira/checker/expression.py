@@ -1,7 +1,7 @@
 import ast
 import _ast
 import operator
-import state
+from moira.checker import state
 
 _default = ast.parse("ERROR if compare_operator(t1, error_value) else \
     WARN if compare_operator(t1, warn_value) else OK", mode='eval')

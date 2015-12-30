@@ -30,15 +30,16 @@ import time
 import sys
 import anyjson
 import txredisapi as redis
-import config
-import moira
 from twisted.internet import defer
 from twisted.application import service
 from uuid import uuid4
-from cache import cache
-from moira import daily
+from moira.cache import cache
+from moira.logs import daily
+from moira.trigger import trigger_reformat
 from datetime import datetime
 from functools import wraps
+from moira import config
+
 
 LAST_CHECK_PREFIX = "moira-metric-last-check:{0}"
 PATTERN_METRICS_PREFIX = "moira-pattern-metrics:{0}"
@@ -503,7 +504,7 @@ class Db(service.Service):
             trigger = anyjson.deserialize(json)
             if tags:
                 trigger_tags = yield self.rc.smembers(TRIGGER_TAGS_PREFIX.format(trigger_id))
-            trigger = moira.reformat_trigger(trigger, trigger_id, trigger_tags)
+            trigger = trigger_reformat(trigger, trigger_id, trigger_tags)
         defer.returnValue((json, trigger))
 
     @defer.inlineCallbacks

@@ -14,8 +14,8 @@ limitations under the License."""
 
 import re
 
-from graphite.grammar import grammar
-from graphite.datalib import TimeSeries, fetchData
+from moira.graphite.grammar import grammar
+from moira.graphite.datalib import TimeSeries, fetchData
 from twisted.internet import defer
 
 
@@ -128,4 +128,4 @@ def evaluateTokens(requestContext, tokens, replacements=None):
 
 
 # Avoid import circularities
-from graphite.functions import (SeriesFunctions, NormalizeEmptyResultError)  # noqa
+from moira.graphite.functions import (SeriesFunctions, NormalizeEmptyResultError)  # noqa

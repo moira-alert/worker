@@ -1,14 +1,7 @@
 import sys
 import os
-sys.path.append(
-    os.path.abspath(
-        os.path.join(
-            os.path.abspath(
-                os.path.dirname(__file__)),
-            '../bin')))
-
 import unittest
-from checker import state, expression
+from mopira.checker import state, expression
 
 
 class Expression(unittest.TestCase):

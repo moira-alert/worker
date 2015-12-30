@@ -1,7 +1,7 @@
-from api.request import delayed, check_json
 from twisted.web import http
 from twisted.internet import defer
-from redis import RedisResouce
+from moira.api.resources.redis import RedisResouce
+from moira.api.request import delayed, check_json
 
 
 class Stats(RedisResouce):

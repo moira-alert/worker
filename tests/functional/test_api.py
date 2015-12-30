@@ -1,13 +1,12 @@
+import anyjson
 from . import trigger, WorkerTests, BodyReceiver
 from twisted.internet.defer import inlineCallbacks, returnValue
 from twisted.web import http, client
 from twisted.web.http_headers import Headers
 from twisted.python.log import ILogObserver
 from StringIO import StringIO
-from checker import state, check
-
-import anyjson
-import moira
+from moira.checker import state, check
+from moira import logs
 
 
 class ApiTests(WorkerTests):
@@ -31,8 +30,8 @@ class ApiTests(WorkerTests):
         returnValue((response, body))
 
     def test_server(self):
-        from api.server import application
-        application.setComponent(ILogObserver, moira.api())
+        from moira.api.server import application
+        application.setComponent(ILogObserver, logs.api())
 
     @trigger("not-existing")
     @inlineCallbacks

@@ -1,9 +1,9 @@
 import uuid
-from api.request import delayed
 from twisted.web import http
 from twisted.internet import defer
-from redis import RedisResouce
-from metric import Metrics
+from moira.api.request import delayed
+from moira.api.resources.metric import Metrics
+from moira.api.resources.redis import RedisResouce
 
 
 class State(RedisResouce):

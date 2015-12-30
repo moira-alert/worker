@@ -1,14 +1,14 @@
 from twisted.internet import reactor
 from twisted.web import server, http
 from twisted.web.resource import Resource
-from resources.trigger import Triggers
-from resources.tags import Tags
-from resources.pattern import Patterns
-from resources.event import Events
-from resources.contact import Contacts
-from resources.subscription import Subscriptions
-from resources.user import Login
-import config
+from moira.api.resources.trigger import Triggers
+from moira.api.resources.tags import Tags
+from moira.api.resources.pattern import Patterns
+from moira.api.resources.event import Events
+from moira.api.resources.contact import Contacts
+from moira.api.resources.subscription import Subscriptions
+from moira.api.resources.user import Login
+from moira import config
 
 
 class MoiraRequest(server.Request):

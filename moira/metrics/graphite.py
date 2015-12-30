@@ -1,5 +1,5 @@
-import config
 import time
+from moira import config
 from twisted.internet import reactor
 from twisted.internet.endpoints import TCP4ClientEndpoint
 from twisted.internet.protocol import Factory, Protocol

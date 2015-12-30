@@ -1,17 +1,8 @@
-import sys
-import os
-sys.path.append(
-    os.path.abspath(
-        os.path.join(
-            os.path.abspath(
-                os.path.dirname(__file__)),
-            '..')))
-
-import config
+from moira import config
 from twisted.application import service, internet
-from graphite import datalib
-from db import Db
-from api.site import Site
+from moira.graphite import datalib
+from moira.db import Db
+from moira.api.site import Site
 
 topService = service.MultiService()
 

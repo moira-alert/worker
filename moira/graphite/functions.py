@@ -20,10 +20,10 @@ import time
 from datetime import datetime, timedelta
 from itertools import izip, imap
 
-from graphite.attime import parseTimeOffset, parseATTime
-from graphite.util import epoch
+from moira.graphite.attime import parseTimeOffset, parseATTime
+from moira.graphite.util import epoch
 
-from graphite.datalib import TimeSeries
+from moira.graphite.datalib import TimeSeries
 from twisted.internet import defer
 from twisted.internet.defer import inlineCallbacks, returnValue
 from functools import reduce
@@ -4054,4 +4054,4 @@ SeriesFunctions = {
 
 
 # Avoid import circularity
-from graphite.evaluator import evaluateTarget
+from moira.graphite.evaluator import evaluateTarget

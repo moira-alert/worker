@@ -1,12 +1,3 @@
-import sys
-import os
-sys.path.append(
-    os.path.abspath(
-        os.path.join(
-            os.path.abspath(
-                os.path.dirname(__file__)),
-            '..')))
-
 import multiprocessing
 from sys import executable
 from os import environ
@@ -14,9 +5,9 @@ from twisted.application import service
 from twisted.python import log
 from twisted.internet import reactor
 from twisted.internet.protocol import ProcessProtocol
-from checker.subscriber import SubscriberService
-from graphite import datalib
-from db import Db
+from moira.checker.subscriber import SubscriberService
+from moira.graphite import datalib
+from moira.db import Db
 
 
 class CheckerProcessProtocol(ProcessProtocol):
