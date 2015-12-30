@@ -1,6 +1,14 @@
 import sys
 import os
-import expression
+
+sys.path.append(
+    os.path.abspath(
+        os.path.join(
+            os.path.abspath(
+                os.path.dirname(__file__)),
+            '../../')))
+
+
 import random
 from datetime import datetime, timedelta
 from time import time
@@ -13,6 +21,7 @@ from moira.metrics import spy, graphite
 from moira.db import Db
 from moira import config
 from moira.checker import state
+from moira.checker import expression
 
 
 PERFORM_INTERVAL = 0.01
