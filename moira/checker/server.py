@@ -8,6 +8,13 @@ from twisted.internet.protocol import ProcessProtocol
 from moira.checker.subscriber import SubscriberService
 from moira.graphite import datalib
 from moira.db import Db
+import os
+
+
+CHECKER_PATH = os.path.abspath(
+    os.path.join(
+        os.path.abspath(
+            os.path.dirname(__file__)), 'check.py'))
 
 
 class CheckerProcessProtocol(ProcessProtocol):
@@ -30,7 +37,7 @@ class TopService(service.MultiService):
         for i in range(max(1, multiprocessing.cpu_count() - 1)):
             checker = reactor.spawnProcess(
                 CheckerProcessProtocol(), executable, [
-                    'moira-checker', 'checker/check.py', str(i)], childFDs={
+                    'moira-checker', CHECKER_PATH, str(i)], childFDs={
                     0: 'w', 1: 1, 2: 2}, env=environ)
             self.checkers.append(checker)
 
