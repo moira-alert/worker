@@ -6,4 +6,5 @@ log
 *.coverage
 *.coverprofile
 dist
+build
 *.egg-info
