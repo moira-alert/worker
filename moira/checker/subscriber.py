@@ -48,7 +48,7 @@ class SubscriberService(service.Service):
         factory.protocol = SubscriberProtocol
         factory.continueTrying = True
         factory.db = self.db
-        reactor.connectTCP(config.REDIS_HOST, config.REDIS_PORT, factory)
+        yield reactor.connectTCP(config.REDIS_HOST, config.REDIS_PORT, factory)
         self.rc = yield factory.deferred
         yield self.rc.subscribe(self.channel)
         log.msg('Subscribed to %s' % self.channel)
