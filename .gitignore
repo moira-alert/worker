@@ -5,3 +5,5 @@ twistd.pid
 log
 *.coverage
 *.coverprofile
+dist
+*.egg-info
