@@ -6,6 +6,7 @@ from twisted.web import http, server
 from moira.graphite.evaluator import evaluateTarget
 from moira.graphite.datalib import createRequestContext
 from moira.trigger import trigger_reformat
+from moira.checker.expression import getExpression
 
 
 def bad_request(request, message):
@@ -62,6 +63,13 @@ def check_trigger(f):
         except:
             log.err()
             defer.returnValue(bad_request(request, "Invalid graphite target"))
+        try:
+            expression_values = {'warn_value': json.get('warn_value'),
+                                 'error_value': json.get('error_value')}
+            getExpression(json.get("expression"), **expression_values)
+        except:
+            log.err()
+            defer.returnValue(bad_request(request, "Invalid expression"))
         yield f(*args, **kwargs)
     return decorator
 

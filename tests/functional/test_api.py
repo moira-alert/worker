@@ -104,6 +104,16 @@ class ApiTests(WorkerTests):
         self.flushLoggedErrors()
         self.assertEqual("Content is not json", body)
 
+    @trigger("invalid-expression-trigger")
+    @inlineCallbacks
+    def testSendInvalidExpressionTrigger(self):
+        response, body = yield self.request('PUT', 'trigger/{0}'.format(self.trigger_id),
+                                            '{"name":"test trigger","targets":["metric"], \
+                                             "warn_value":-0.1, "error_value":0.1,"ttl":600,"ttl_state":"NODATA", \
+                                             "tags":["tag1"],"expression":"ERROR if"}', http.BAD_REQUEST)
+        self.flushLoggedErrors()
+        self.assertEqual("Invalid expression", body)
+
     @trigger("wrong-time-span")
     @inlineCallbacks
     def testSendWrongTimeSpan(self):
