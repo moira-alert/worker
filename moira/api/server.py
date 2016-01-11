@@ -1,3 +1,13 @@
+import sys
+import os
+
+sys.path.append(
+    os.path.abspath(
+        os.path.join(
+            os.path.abspath(
+                os.path.dirname(__file__)),
+            '../../')))
+
 from moira import config
 from twisted.application import service, internet
 from moira.graphite import datalib
