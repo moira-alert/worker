@@ -48,12 +48,17 @@ def check_trigger(f):
         except:
             log.err()
             defer.returnValue(bad_request(request, "Invalid trigger format"))
+        expression_values = {'warn_value': json.get('warn_value'),
+                             'error_value': json.get('error_value')}
         try:
             now = int(time())
             requestContext = createRequestContext(str(now - 10), str(now))
             resolved = set()
+            target_num = 1
             for target in json["targets"]:
-                yield evaluateTarget(requestContext, target)
+                target_time_series = yield evaluateTarget(requestContext, target)
+                expression_values["t%s" % target_num] = 42 if len(target_time_series) == 0 else target_time_series[-1]
+                target_num += 1
                 for pattern, resolve in requestContext['graphite_patterns'].iteritems():
                     for r in resolve:
                         if r != pattern:
@@ -64,8 +69,6 @@ def check_trigger(f):
             log.err()
             defer.returnValue(bad_request(request, "Invalid graphite target"))
         try:
-            expression_values = {'warn_value': json.get('warn_value'),
-                                 'error_value': json.get('error_value')}
             getExpression(json.get("expression"), **expression_values)
         except:
             log.err()
