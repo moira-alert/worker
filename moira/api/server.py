@@ -19,6 +19,8 @@ def run():
     config.HTTP_PORT = args.port
     config.LOG_DIRECTORY = args.l
 
+    config.read()
+
     logger = logs.api() if args.l != "stdout" else sys.stdout
     log.startLogging(logger)
 

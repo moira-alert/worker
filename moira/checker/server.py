@@ -52,6 +52,8 @@ def run():
     config.CONFIG_PATH = args.c
     config.LOG_DIRECTORY = args.l
 
+    config.read()
+
     logger = logs.checker() if args.l != "stdout" else sys.stdout
     log.startLogging(logger)
 

@@ -302,6 +302,9 @@ if __name__ == '__main__':
 
     config.CONFIG_PATH = args.c
     config.LOG_DIRECTORY = args.l
+
+    config.read()
+
     if args.l != "stdout":
         logfile = DailyLogFile(
             "checker-{0}.log".format(args.n),
