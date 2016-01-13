@@ -35,26 +35,38 @@ CHECK_INTERVAL = 5
 METRICS_TTL = 3600
 PREFIX = "/api"
 
-if os.path.exists(CONFIG_PATH):
-    with open(CONFIG_PATH, 'r') as yml:
-        cfg = yaml.load(yml)
-        REDIS_HOST = cfg['redis']['host']
-        REDIS_PORT = cfg['redis']['port']
-        LOG_DIRECTORY = cfg['worker']['log_dir']
-        HTTP_PORT = cfg['api']['port']
-        HTTP_ADDR = cfg['api']['listen']
-        for key in cfg['graphite']:
-            if key.startswith('uri'):
-                host, port = cfg['graphite'][key].split(':')
-                GRAPHITE.append((host, int(port)))
-        GRAPHITE_PREFIX = cfg['graphite']['prefix']
-        GRAPHITE_INTERVAL = cfg['graphite']['interval']
-        NODATA_CHECK_INTERVAL = cfg['checker'].get('nodata_check_interval', 60)
-        CHECK_INTERVAL = cfg['checker'].get('check_interval', 5)
-        METRICS_TTL = cfg['checker'].get('metrics_ttl', 3600)
-
-
 HOSTNAME = socket.gethostname().split('.')[0]
+
+
+def read():
+    global REDIS_HOST
+    global REDIS_PORT
+    global LOG_DIRECTORY
+    global HTTP_PORT
+    global HTTP_ADDR
+    global GRAPHITE_PREFIX
+    global GRAPHITE_INTERVAL
+    global NODATA_CHECK_INTERVAL
+    global CHECK_INTERVAL
+    global METRICS_TTL
+
+    if os.path.exists(CONFIG_PATH):
+        with open(CONFIG_PATH, 'r') as yml:
+            cfg = yaml.load(yml)
+            REDIS_HOST = cfg['redis']['host']
+            REDIS_PORT = cfg['redis']['port']
+            LOG_DIRECTORY = cfg['worker']['log_dir']
+            HTTP_PORT = cfg['api']['port']
+            HTTP_ADDR = cfg['api']['listen']
+            for key in cfg['graphite']:
+                if key.startswith('uri'):
+                    host, port = cfg['graphite'][key].split(':')
+                    GRAPHITE.append((host, int(port)))
+            GRAPHITE_PREFIX = cfg['graphite']['prefix']
+            GRAPHITE_INTERVAL = cfg['graphite']['interval']
+            NODATA_CHECK_INTERVAL = cfg['checker'].get('nodata_check_interval', 60)
+            CHECK_INTERVAL = cfg['checker'].get('check_interval', 5)
+            METRICS_TTL = cfg['checker'].get('metrics_ttl', 3600)
 
 
 def get_parser():
