@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name = "moira",
-    version = "0.1.0",
+    version = "1.0.0",
     author = "SKB Kontur",
     author_email = "devops@skbkontur.ru",
     description = "Moira checker and api modules",
@@ -15,4 +15,8 @@ setup(
         "Development Status :: 5 - Production/Stable",
         "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     ],
+    entry_points={
+        'console_scripts': ['moira-api = moira.api.server:run',
+                            'moira-checker = moira.checker.server:run'],
+    },
 )

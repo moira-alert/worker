@@ -2,6 +2,8 @@ import socket
 import anyjson
 import yaml
 import os
+import argparse
+
 
 try:
     import ujson
@@ -53,3 +55,10 @@ if os.path.exists(CONFIG_PATH):
 
 
 HOSTNAME = socket.gethostname().split('.')[0]
+
+
+def get_parser():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-c', help='path to configuration file', default="/etc/moira/config.yml")
+    parser.add_argument('-l', help='path to log directory', default="stdout")
+    return parser

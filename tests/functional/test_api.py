@@ -29,10 +29,6 @@ class ApiTests(WorkerTests):
             body = anyjson.loads(body)
         returnValue((response, body))
 
-    def test_server(self):
-        from moira.api.server import application
-        application.setComponent(ILogObserver, logs.api())
-
     @trigger("not-existing")
     @inlineCallbacks
     def testTriggerNotFound(self):
