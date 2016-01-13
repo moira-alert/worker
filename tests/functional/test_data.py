@@ -29,10 +29,6 @@ class DataTests(WorkerTests):
         response = yield self.client.request('DELETE', self.url_prefix + 'trigger/{0}'.format(self.trigger_id))
         self.assertEqual(http.OK, response.code)
 
-    def testCheckerServer(self):
-        from moira.checker.server import application
-        application.setComponent(ILogObserver, logs.checker())
-
     @trigger("bad-trigger")
     @inlineCallbacks
     def testTriggersCheckService(self):

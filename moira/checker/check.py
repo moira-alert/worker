@@ -205,7 +205,6 @@ class TriggersCheck():
             check["state"] = state.EXCEPTION
             check["msg"] = "Trigger evaluation exception"
             yield TriggersCheck.compare_state(db, trigger, check, last_check, now)
-        # log.msg("Saving trigger last check %s, %s" % (trigger_id, check))
         yield db.setTriggerLastCheck(trigger_id, check)
 
     @staticmethod
@@ -253,16 +252,11 @@ def run(callback):
     datalib.db = db
     init = db.startService()
     init.addCallback(callback)
+
     reactor.run()
 
 
 def main(number):
-
-    logfile = DailyLogFile(
-        "checker-{0}.log".format(number),
-        os.path.abspath(
-            config.LOG_DIRECTORY))
-    log.startLogging(logfile)
 
     def get_metrics():
         return [
@@ -284,13 +278,12 @@ def main(number):
     def start(db):
         checker = TriggersCheck(db)
         checker.start()
+        reactor.addSystemEventTrigger('before', 'shutdown', checker.stop)
 
     run(start)
 
 
 def check(trigger_id):
-
-    log.startLogging(sys.stdout)
 
     @defer.inlineCallbacks
     def start(db):
@@ -302,7 +295,23 @@ def check(trigger_id):
 
 if __name__ == '__main__':
 
-    if len(sys.argv) == 2:
-        main(int(sys.argv[1]))
-    if len(sys.argv) == 3:
-        check(sys.argv[2])
+    parser = config.get_parser()
+    parser.add_argument('-t', help='check single trigger by id and exit')
+    parser.add_argument('-n', help='checker number', type=int)
+    args = parser.parse_args()
+
+    config.CONFIG_PATH = args.c
+    config.LOG_DIRECTORY = args.l
+    if args.l != "stdout":
+        logfile = DailyLogFile(
+            "checker-{0}.log".format(args.n),
+            os.path.abspath(
+                config.LOG_DIRECTORY))
+        log.startLogging(logfile)
+    else:
+        log.startLogging(sys.stdout)
+
+    if args.t:
+        check(args.t)
+    else:
+        main(args.n)
