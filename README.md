@@ -1,6 +1,6 @@
 # Worker
 
-[![Documentation Status](https://readthedocs.org/projects/moira/badge/?version=latest)](http://moira.readthedocs.org/en/latest/?badge=latest) [![Build Status](https://travis-ci.org/moira-alert/worker.svg?branch=master)](https://travis-ci.org/moira-alert/worker) [![Coverage Status](https://coveralls.io/repos/moira-alert/worker/badge.svg?branch=master&service=github)](https://coveralls.io/github/moira-alert/worker?branch=master) [![Gitter](https://badges.gitter.im/Join Chat.svg)](https://gitter.im/moira-alert/moira?utm_source=badge&utm_medium=badge&utm_campaign=badge)
+[![Documentation Status](https://readthedocs.org/projects/moira/badge/?version=latest)](http://moira.readthedocs.org/en/latest/?badge=latest) [![Build Status](https://travis-ci.org/moira-alert/worker.svg?branch=master)](https://travis-ci.org/moira-alert/worker) [![Coverage Status](https://coveralls.io/repos/moira-alert/worker/badge.svg?branch=master&service=github)](https://coveralls.io/github/moira-alert/worker?branch=master) [![Code Health](https://landscape.io/github/moira-alert/worker/master/landscape.svg?style=flat)](https://landscape.io/github/moira-alert/worker/master) [![Gitter](https://badges.gitter.im/Join Chat.svg)](https://gitter.im/moira-alert/moira?utm_source=badge&utm_medium=badge&utm_campaign=badge)
 
 
 Code in this repository is a part of Moira monitoring application. Other parts are [Web][web], [Cache][cache] and [Notifier][notifier].
