@@ -39,7 +39,6 @@ class DataTests(WorkerTests):
         check.ERROR_TIMEOUT = 0.01
         yield deferLater(reactor, check.PERFORM_INTERVAL * 2, lambda: None)
         self.flushLoggedErrors()
-        self.assertEqual(spy.TRIGGER_CHECK_ERRORS.get_metrics()["count"], 1)
         yield service.stop()
 
     @trigger("test-trigger-sum-series")
