@@ -1,3 +1,18 @@
+import time
+import sys
+import anyjson
+import txredisapi as redis
+from twisted.internet import defer
+from twisted.application import service
+from uuid import uuid4
+from moira.cache import cache
+from moira.logs import daily
+from moira.trigger import trigger_reformat
+from datetime import datetime
+from functools import wraps
+from moira import config
+
+
 _doc_string = """
 Redis database objects:
     - KEY {0}
@@ -25,20 +40,6 @@ Redis database objects:
 """
 
 __docformat__ = 'reStructuredText'
-
-import time
-import sys
-import anyjson
-import txredisapi as redis
-from twisted.internet import defer
-from twisted.application import service
-from uuid import uuid4
-from moira.cache import cache
-from moira.logs import daily
-from moira.trigger import trigger_reformat
-from datetime import datetime
-from functools import wraps
-from moira import config
 
 
 LAST_CHECK_PREFIX = "moira-metric-last-check:{0}"

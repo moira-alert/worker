@@ -30,6 +30,24 @@ def check_json(f):
     return decorator
 
 
+@defer.inlineCallbacks
+def resolve_patterns(request, expression_values):
+    now = int(time())
+    requestContext = createRequestContext(str(now - 10), str(now))
+    resolved = set()
+    target_num = 1
+    for target in request.body_json["targets"]:
+        target_time_series = yield evaluateTarget(requestContext, target)
+        expression_values["t%s" % target_num] = 42 if len(target_time_series) == 0 else target_time_series[-1]
+        target_num += 1
+        for pattern, resolve in requestContext['graphite_patterns'].iteritems():
+            for r in resolve:
+                if r != pattern:
+                    resolved.add(r)
+    request.body_json["patterns"] = [pattern for pattern in requestContext['graphite_patterns']
+                                     if pattern not in resolved]
+
+
 def check_trigger(f):
     @defer.inlineCallbacks
     def decorator(*args, **kwargs):
@@ -47,20 +65,7 @@ def check_trigger(f):
         expression_values = {'warn_value': json.get('warn_value'),
                              'error_value': json.get('error_value')}
         try:
-            now = int(time())
-            requestContext = createRequestContext(str(now - 10), str(now))
-            resolved = set()
-            target_num = 1
-            for target in json["targets"]:
-                target_time_series = yield evaluateTarget(requestContext, target)
-                expression_values["t%s" % target_num] = 42 if len(target_time_series) == 0 else target_time_series[-1]
-                target_num += 1
-                for pattern, resolve in requestContext['graphite_patterns'].iteritems():
-                    for r in resolve:
-                        if r != pattern:
-                            resolved.add(r)
-            request.body_json["patterns"] = [pattern for pattern in requestContext['graphite_patterns']
-                                             if pattern not in resolved]
+            yield resolve_patterns(request, expression_values)
         except:
             log.err()
             defer.returnValue(bad_request(request, "Invalid graphite target"))
