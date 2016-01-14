@@ -2,8 +2,12 @@ def trigger_reformat(trigger, trigger_id, tags):
     if trigger_id:
         trigger["id"] = trigger_id
     trigger["tags"] = list(tags)
-    trigger["warn_value"] = float(trigger["warn_value"])
-    trigger["error_value"] = float(trigger["error_value"])
+    for field in ["warn_value", "error_value"]:
+        value = trigger.get(field)
+        if value:
+            trigger[field] = float(value)
+        else:
+            trigger[field] = None
     ttl = trigger.get("ttl")
     if ttl:
         trigger["ttl"] = int(ttl)

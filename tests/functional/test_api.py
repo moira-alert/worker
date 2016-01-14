@@ -92,6 +92,16 @@ class ApiTests(WorkerTests):
         response, triggers = yield self.request('GET', 'trigger')
         self.assertEqual(1, len(triggers["list"]))
 
+    @trigger("expression-trigger")
+    @inlineCallbacks
+    def testTriggers(self):
+        response, body = yield self.request('PUT', 'trigger/{0}'.format(self.trigger_id),
+                                            '{"name": "test trigger", "targets": ["sumSeries(*)"], \
+                                             "tags": ["tag1", "tag2"], "expression": "ERROR if t1 > 1 else OK" }',
+                                            )
+        response, triggers = yield self.request('GET', 'trigger')
+        self.assertEqual(1, len(triggers["list"]))
+
     @trigger("not-json-trigger")
     @inlineCallbacks
     def testSendNotJsonTrigger(self):

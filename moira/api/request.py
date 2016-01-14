@@ -36,13 +36,9 @@ def check_trigger(f):
         request = args[1]
         json = request.body_json
         request.graphite_patterns = []
-        for field in ["targets", "warn_value", "error_value"]:
-            if json.get(field) is None:
-                defer.returnValue(
-                    bad_request(
-                        request,
-                        "%s is required" %
-                        field))
+        for field, alt in [("targets", None), ("warn_value", "expression"), ("error_value", "expression")]:
+            if json.get(field) is None and json.get(alt) is None:
+                defer.returnValue(bad_request(request, "%s is required" % field))
         try:
             request.body_json = trigger_reformat(json, json.get("id"), json.get("tags", []))
         except:
