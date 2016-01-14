@@ -115,7 +115,7 @@ def audit(f):
     def decorator(*args, **kwargs):
         global audit_log
         if audit_log is None:
-            audit_log = daily("audit.log")
+            audit_log = sys.stdout if config.LOG_DIRECTORY == "stdout" else daily("audit.log")
         if 'existing' not in kwargs:
             get_existing = kwargs.get('get_existing')
             kwargs['existing'] = yield get_existing

@@ -1,11 +1,11 @@
 import sys
 import os
-sys.path.append(
-    os.path.abspath(
-        os.path.join(
-            os.path.abspath(
-                os.path.dirname(__file__)),
-            '../../')))
+sys.path.insert(0,
+                os.path.abspath(
+                    os.path.join(
+                        os.path.abspath(
+                            os.path.dirname(__file__)),
+                        '../../')))
 from fakeredis import FakeStrictRedis, FakePipeline
 from StringIO import StringIO
 from twisted.trial import unittest
@@ -18,6 +18,7 @@ from moira.checker.subscriber import SubscriberProtocol
 from moira.graphite import datalib
 from moira.checker.check import TriggersCheck
 from moira import db
+from moira import config
 
 
 def trigger(trigger_id):
@@ -95,6 +96,7 @@ class WorkerTests(unittest.TestCase):
 
     @inlineCallbacks
     def setUp(self):
+        config.LOG_DIRECTORY = "stdout"
         log.startLogging(sys.stdout)
         self.db = db.Db()
         self.db.rc = TwistedFakeRedis()
