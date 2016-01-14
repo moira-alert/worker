@@ -547,7 +547,7 @@ class Db(service.Service):
         yield self.rc.delete(TRIGGER_NEXT_PREFIX.format(trigger_id))
         notifications = yield self.rc.zrangebyscore(NOTIFIER_NOTIFICATIONS, withscores=True)
         t = yield self.rc.multi()
-        for json, score in notifications:
+        for json, _ in notifications:
             notification = anyjson.loads(json)
             if notification.get('event', {}).get('trigger_id') == trigger_id:
                 t.zadd(NOTIFIER_NOTIFICATIONS, now, json)

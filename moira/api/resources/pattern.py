@@ -35,7 +35,7 @@ class Patterns(RedisResouce):
             triggers = yield self.db.getPatternTriggers(pattern)
             triggers_list = []
             for trigger_id in triggers:
-                json, trigger = yield self.db.getTrigger(trigger_id, tags=True)
+                _, trigger = yield self.db.getTrigger(trigger_id, tags=True)
                 triggers_list.append(trigger)
             metrics = yield self.db.getPatternMetrics(pattern)
             item = {
