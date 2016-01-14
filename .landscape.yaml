@@ -1,0 +1,3 @@
+strictness: medium
+ignore-paths:
+  - moira/graphite
