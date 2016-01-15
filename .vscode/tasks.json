@@ -5,6 +5,7 @@
 	"showOutput": "silent",
 	"args": [
 		"--max-line-length=120",
+		"--exclude=moira/graphite",
 		"moira"
 	],
 	"problemMatcher": {
