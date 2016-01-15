@@ -1,15 +1,13 @@
-import sys
-import os
 import random
 from datetime import datetime, timedelta
 from time import time
 from twisted.python import log
-from twisted.python.logfile import DailyLogFile
 from twisted.internet import defer, reactor, task
 from moira.graphite.evaluator import evaluateTarget
 from moira.graphite import datalib
 from moira.metrics import spy, graphite
 from moira.db import Db
+from moira import logs
 from moira import config
 from moira.checker import state
 from moira.checker import expression
@@ -288,26 +286,10 @@ def check(trigger_id):
 
 if __name__ == '__main__':
 
-    parser = config.get_parser()
-    parser.add_argument('-t', help='check single trigger by id and exit')
-    parser.add_argument('-n', help='checker number', type=int)
-    args = parser.parse_args()
-
-    config.CONFIG_PATH = args.c
-    config.LOG_DIRECTORY = args.l
-
     config.read()
+    logs.checker_worker()
 
-    if args.l != "stdout":
-        logfile = DailyLogFile(
-            "checker-{0}.log".format(args.n),
-            os.path.abspath(
-                config.LOG_DIRECTORY))
-        log.startLogging(logfile)
+    if config.ARGS.t:
+        check(config.ARGS.t)
     else:
-        log.startLogging(sys.stdout)
-
-    if args.t:
-        check(args.t)
-    else:
-        main(args.n)
+        main(config.ARGS.n)

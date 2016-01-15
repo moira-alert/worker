@@ -1,6 +1,5 @@
 import multiprocessing
 import os
-import sys
 from sys import executable
 from os import environ
 from twisted.application import service
@@ -46,16 +45,8 @@ class TopService(service.MultiService):
 
 def run():
 
-    parser = config.get_parser()
-    args = parser.parse_args()
-
-    config.CONFIG_PATH = args.c
-    config.LOG_DIRECTORY = args.l
-
     config.read()
-
-    logger = logs.checker() if args.l != "stdout" else sys.stdout
-    log.startLogging(logger)
+    logs.checker_master()
 
     topService = TopService()
 

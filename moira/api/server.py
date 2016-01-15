@@ -1,7 +1,5 @@
-import sys
 from twisted.application import service, internet
 from twisted.internet import reactor
-from twisted.python import log
 from moira import config
 from moira.graphite import datalib
 from moira.db import Db
@@ -11,18 +9,8 @@ from moira import logs
 
 def run():
 
-    parser = config.get_parser()
-    parser.add_argument('-port', help='listening port', default=8081, type=int)
-    args = parser.parse_args()
-
-    config.CONFIG_PATH = args.c
-    config.HTTP_PORT = args.port
-    config.LOG_DIRECTORY = args.l
-
     config.read()
-
-    logger = logs.api() if args.l != "stdout" else sys.stdout
-    log.startLogging(logger)
+    logs.api()
 
     topService = service.MultiService()
 

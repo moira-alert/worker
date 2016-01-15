@@ -96,7 +96,6 @@ class WorkerTests(unittest.TestCase):
 
     @inlineCallbacks
     def setUp(self):
-        config.LOG_DIRECTORY = "stdout"
         log.startLogging(sys.stdout)
         self.db = db.Db()
         self.db.rc = TwistedFakeRedis()
