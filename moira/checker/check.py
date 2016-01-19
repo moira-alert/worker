@@ -145,7 +145,8 @@ class TriggersCheck():
                         continue
 
                     expression_values.update({'warn_value': trigger.get('warn_value'),
-                                              'error_value': trigger.get('error_value')})
+                                              'error_value': trigger.get('error_value'),
+                                              'PREV_STATE': last_metric_state['state']})
 
                     if ttl and value_timestamp + ttl < last_check["timestamp"]:
                         log.msg("Metric %s TTL expired for value %s with timestamp %s" %

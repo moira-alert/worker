@@ -101,7 +101,7 @@ class DataTests(WorkerTests):
         yield self.sendTrigger('{"name": "test trigger", "targets": ["' + metric1 + '", \
                                "' + metric2 + '"], \
                                "expression": "ERROR if t1 > t2 else OK", \
-                               "warn_value": 20, "error_value": 50, "ttl":"600" }')
+                               "ttl":"600" }')
         json, trigger = yield self.db.getTrigger(self.trigger_id)
         yield self.db.sendMetric(metric1, metric1, self.now - 60, 1)
         yield self.db.sendMetric(metric2, metric2, self.now - 60, 2)
@@ -111,6 +111,29 @@ class DataTests(WorkerTests):
         yield self.db.sendMetric(metric2, metric2, self.now, 1)
         yield TriggersCheck.check(self.db, self.trigger_id)
         yield self.assert_trigger_metric(metric1, 2, state.ERROR)
+
+    @trigger('test-trigger-expression-prev-state')
+    @inlineCallbacks
+    def testPrevStateTriggerExpression(self):
+        metric1 = 'MoiraFuncTest.one'
+        metric2 = 'MoiraFuncTest.two'
+        yield self.sendTrigger('{"name": "test trigger", "targets": ["' + metric1 + '", \
+                               "' + metric2 + '"], \
+                               "expression": "ERROR if t1 > 10 else PREV_STATE if t2 > 0 else OK", \
+                               "ttl":"600" }')
+        json, trigger = yield self.db.getTrigger(self.trigger_id)
+        yield self.db.sendMetric(metric1, metric1, self.now - 120, 10)
+        yield self.db.sendMetric(metric2, metric2, self.now - 120, 0)
+        yield TriggersCheck.check(self.db, self.trigger_id)
+        yield self.assert_trigger_metric(metric1, 10, state.OK)
+        yield self.db.sendMetric(metric1, metric1, self.now - 60, 11)
+        yield self.db.sendMetric(metric2, metric2, self.now - 60, 1)
+        yield TriggersCheck.check(self.db, self.trigger_id)
+        yield self.assert_trigger_metric(metric1, 11, state.ERROR)
+        yield self.db.sendMetric(metric1, metric1, self.now, 9)
+        yield self.db.sendMetric(metric2, metric2, self.now, 1)
+        yield TriggersCheck.check(self.db, self.trigger_id)
+        yield self.assert_trigger_metric(metric1, 9, state.ERROR)
 
     @trigger('test-trigger-patterns2')
     @inlineCallbacks
