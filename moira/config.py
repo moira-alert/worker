@@ -65,8 +65,10 @@ def read():
     parser = get_parser()
     args = parser.parse_args()
 
-    CONFIG_PATH = args.c
     ARGS = args
+    CONFIG_PATH = args.c
+    HTTP_PORT = args.port
+    LOG_DIRECTORY = args.l
 
     if os.path.exists(CONFIG_PATH):
         with open(CONFIG_PATH, 'r') as yml:
@@ -85,6 +87,3 @@ def read():
             NODATA_CHECK_INTERVAL = cfg['checker'].get('nodata_check_interval', 60)
             CHECK_INTERVAL = cfg['checker'].get('check_interval', 5)
             METRICS_TTL = cfg['checker'].get('metrics_ttl', 3600)
-
-    HTTP_PORT = args.port
-    LOG_DIRECTORY = args.l
