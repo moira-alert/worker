@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name = "moira",
-    version = "1.0.1",
+    version = "1.0.5",
     author = "SKB Kontur",
     author_email = "devops@skbkontur.ru",
     description = "Moira checker and api modules",
