@@ -14,7 +14,7 @@ from twisted.web import client
 from twisted.internet import reactor, protocol
 from twisted.internet.defer import Deferred, inlineCallbacks
 from moira.api.site import Site
-from moira.checker.subscriber import SubscriberProtocol
+from moira.checker.master import MasterProtocol
 from moira.graphite import datalib
 from moira.checker.check import TriggersCheck
 from moira import db
@@ -103,7 +103,7 @@ class WorkerTests(unittest.TestCase):
         yield self.db.flush()
         datalib.db = self.db
         site = Site(self.db)
-        self.protocol = SubscriberProtocol()
+        self.protocol = MasterProtocol()
         self.protocol.factory = self
         self.port = reactor.listenTCP(0, site, interface="127.0.0.1")
         self.client = client.Agent(reactor)

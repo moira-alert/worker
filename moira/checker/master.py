@@ -7,7 +7,7 @@ from twisted.internet.task import LoopingCall
 from moira import config
 
 
-class SubscriberProtocol(redis.SubscriberProtocol):
+class MasterProtocol(redis.SubscriberProtocol):
 
     @defer.inlineCallbacks
     def messageReceived(self, ignored, channel, message, nocache=False):
@@ -35,7 +35,7 @@ class SubscriberProtocol(redis.SubscriberProtocol):
             log.err()
 
 
-class SubscriberService(service.Service):
+class MasterService(service.Service):
 
     def __init__(self, db, channel="metric-event"):
         self.db = db
@@ -45,7 +45,7 @@ class SubscriberService(service.Service):
     def startService(self):
         service.Service.startService(self)
         factory = redis.SubscriberFactory()
-        factory.protocol = SubscriberProtocol
+        factory.protocol = MasterProtocol
         factory.continueTrying = True
         factory.db = self.db
         yield self.db.startService()

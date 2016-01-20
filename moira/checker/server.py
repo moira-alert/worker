@@ -6,7 +6,7 @@ from twisted.application import service
 from twisted.python import log
 from twisted.internet import reactor
 from twisted.internet.protocol import ProcessProtocol
-from moira.checker.subscriber import SubscriberService
+from moira.checker.master import MasterService
 from moira.graphite import datalib
 from moira.db import Db
 from moira import config
@@ -54,7 +54,7 @@ def run():
     datalib.db = db
     db.setServiceParent(topService)
 
-    subService = SubscriberService(db)
+    subService = MasterService(db)
     subService.setServiceParent(topService)
 
     topService.startService()
