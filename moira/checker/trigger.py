@@ -9,6 +9,24 @@ from moira.checker import expression
 from moira import config
 
 
+class TargetTimeSeries(dict):
+
+    def __init__(self, *arg, **kwargs):
+        super(TargetTimeSeries, self).__init__(*arg, **kwargs)
+
+    def get_expression_values(self, t1, timestamp):
+        expression_values = {}
+        for target_number in xrange(1, len(self) + 1):
+            target_name = "t%s" % target_number
+            tN = self[target_number][0] if target_number > 1 else t1
+            value_index = (timestamp - tN.start) / tN.step
+            tN_value = tN[value_index] if len(tN) > value_index else None
+            expression_values[target_name] = tN_value
+            if tN_value is None:
+                break
+        return expression_values
+
+
 class Trigger:
 
     def __init__(self, id, db):
@@ -36,7 +54,7 @@ class Trigger:
     @defer.inlineCallbacks
     def get_timeseries(self, requestContext):
         targets = self.struct.get("targets", [])
-        target_time_series = {}
+        target_time_series = TargetTimeSeries()
         target_number = 1
 
         for target in targets:
@@ -44,16 +62,16 @@ class Trigger:
 
             if target_number > 1:
                 if len(time_series) > 1:
-                    raise "Target #%s has more than one timeseries" % target_number
+                    raise Exception("Target #%s has more than one timeseries" % target_number)
                 if len(time_series) == 0:
-                    raise "Target #%s has no timeseries" % target_number
+                    raise Exception("Target #%s has no timeseries" % target_number)
 
             for time_serie in time_series:
                 time_serie.last_state = self.last_check["metrics"].get(
                                         time_serie.name, {
                                             "state": state.NODATA,
                                             "timestamp": time_serie.start})
-            target_time_series["t%s" % target_number] = time_series
+            target_time_series[target_number] = time_series
             target_number += 1
 
         defer.returnValue(target_time_series)
@@ -83,12 +101,12 @@ class Trigger:
 
             if len(time_series) == 0:
                 if self.ttl:
-                    check["state"] = self.struct.get("ttl_state", state.NODATA)
+                    check["state"] = self.ttl_state
                     check["msg"] = "Trigger has no metrics"
                     yield self.compare_state(check, self.last_check, now)
             else:
 
-                for t1 in time_series["t1"]:
+                for t1 in time_series[1]:
 
                     check["metrics"][t1.name] = metric_state = t1.last_state.copy()
 
@@ -98,28 +116,11 @@ class Trigger:
                             continue
 
                         if self.ttl and value_timestamp + self.ttl < self.last_check["timestamp"]:
-                            log.msg("Metric %s TTL expired with timestamp %s" %
-                                    (t1.name, value_timestamp))
-                            metric_state["state"] = self.struct.get("ttl_state", state.NODATA)
-                            metric_state["timestamp"] = value_timestamp + self.ttl
-                            if "value" in metric_state:
-                                del metric_state["value"]
-                            yield self.compare_state(metric_state,
-                                                     t1.last_state,
-                                                     value_timestamp + self.ttl, value=None,
-                                                     metric=t1.name)
+                            metric_state["timestamp"] = value_timestamp
+                            yield self.set_nodata(t1.name, metric_state, t1.last_state)
                             continue
 
-                        expression_values = {}
-
-                        for target_number in xrange(1, len(time_series) + 1):
-                            target_name = "t%s" % target_number
-                            tN = time_series[target_name][0] if target_number > 1 else t1
-                            value_index = (value_timestamp - tN.start) / tN.step
-                            tN_value = tN[value_index] if len(tN) > value_index else None
-                            expression_values[target_name] = tN_value
-                            if tN_value is None:
-                                break
+                        expression_values = time_series.get_expression_values(t1, value_timestamp)
 
                         t1_value = expression_values["t1"]
 
@@ -139,12 +140,7 @@ class Trigger:
                                                  metric=t1.name)
 
                     if self.ttl and metric_state["timestamp"] + self.ttl < self.last_check["timestamp"]:
-                        log.msg("Metric %s TTL expired for state %s" % (t1.name, metric_state))
-                        metric_state["state"] = self.struct.get("ttl_state", state.NODATA)
-                        metric_state["timestamp"] += self.ttl
-                        if "value" in metric_state:
-                            del metric_state["value"]
-                        yield self.compare_state(metric_state, t1.last_state, metric_state["timestamp"], metric=t1.name)
+                        yield self.set_nodata(t1.name, metric_state, t1.last_state)
         except StopIteration:
             raise
         except:
@@ -153,6 +149,15 @@ class Trigger:
             check["msg"] = "Trigger evaluation exception"
             yield self.compare_state(check, self.last_check, now)
         yield self.db.setTriggerLastCheck(self.id, check)
+
+    @defer.inlineCallbacks
+    def set_nodata(self, metric, metric_state, last_state):
+        log.msg("Metric %s TTL expired for state %s" % (metric, metric_state))
+        metric_state["state"] = self.ttl_state
+        metric_state["timestamp"] += self.ttl
+        if "value" in metric_state:
+            del metric_state["value"]
+        yield self.compare_state(metric_state, last_state, metric_state["timestamp"], metric=metric)
 
     @defer.inlineCallbacks
     def compare_state(self,
