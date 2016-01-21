@@ -12,16 +12,16 @@ from moira.db import Db
 from moira import config
 from moira import logs
 
-CHECKER_PATH = os.path.abspath(
+WORKER_PATH = os.path.abspath(
     os.path.join(
         os.path.abspath(
-            os.path.dirname(__file__)), 'check.py'))
+            os.path.dirname(__file__)), 'worker.py'))
 
 
 class CheckerProcessProtocol(ProcessProtocol):
 
     def connectionMade(self):
-        log.msg("Run checker - %s" % self.transport.pid)
+        log.msg("Run worker - %s" % self.transport.pid)
 
     def processEnded(self, reason):
         log.msg("Checker process ended with reason: %s" % reason)
@@ -38,7 +38,7 @@ class TopService(service.MultiService):
         for i in range(max(1, multiprocessing.cpu_count() - 1)):
             checker = reactor.spawnProcess(
                 CheckerProcessProtocol(), executable,
-                ['moira-checker', CHECKER_PATH, "-n", str(i), "-c", config.CONFIG_PATH, "-l", config.LOG_DIRECTORY],
+                ['moira-checker', WORKER_PATH, "-n", str(i), "-c", config.CONFIG_PATH, "-l", config.LOG_DIRECTORY],
                 childFDs={0: 'w', 1: 1, 2: 2}, env=environ)
             self.checkers.append(checker)
 

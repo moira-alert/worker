@@ -16,7 +16,7 @@ from twisted.internet.defer import Deferred, inlineCallbacks
 from moira.api.site import Site
 from moira.checker.master import MasterProtocol
 from moira.graphite import datalib
-from moira.checker.check import TriggersCheck
+from moira.checker.worker import TriggersCheck
 from moira.checker.trigger import Trigger
 from moira import db
 from moira import config

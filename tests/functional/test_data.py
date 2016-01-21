@@ -9,7 +9,7 @@ from twisted.web.http_headers import Headers
 from twisted.python.log import ILogObserver
 from twisted.python import log
 from moira.checker import state, check
-from moira.checker.check import TriggersCheck
+from moira.checker.worker import TriggersCheck
 from moira.metrics import spy
 from moira import logs
 
