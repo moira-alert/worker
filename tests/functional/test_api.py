@@ -5,7 +5,7 @@ from twisted.web import http, client
 from twisted.web.http_headers import Headers
 from twisted.python.log import ILogObserver
 from StringIO import StringIO
-from moira.checker import state, check
+from moira.checker import state, worker
 from moira import logs
 
 

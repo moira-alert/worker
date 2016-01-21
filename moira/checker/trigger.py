@@ -34,13 +34,13 @@ class Trigger:
         defer.returnValue(True)
 
     @defer.inlineCallbacks
-    def get_timeseries(self):
+    def get_timeseries(self, requestContext):
         targets = self.struct.get("targets", [])
         target_time_series = {}
         target_number = 1
 
         for target in targets:
-            time_series = yield evaluateTarget(self.requestContext, target)
+            time_series = yield evaluateTarget(requestContext, target)
 
             if target_number > 1:
                 if len(time_series) > 1:
@@ -71,13 +71,13 @@ class Trigger:
         if fromTime is None:
             fromTime = self.last_check.get("timestamp", now)
 
-        self.requestContext = datalib.createRequestContext(str(fromTime - 600), str(now))
+        requestContext = datalib.createRequestContext(str(fromTime - 600), str(now))
 
         check = {"metrics": {}, "state": state.OK, "timestamp": now}
         try:
-            time_series = yield self.get_timeseries()
+            time_series = yield self.get_timeseries(requestContext)
 
-            for metric in self.requestContext['metrics']:
+            for metric in requestContext['metrics']:
                 yield self.db.cleanupMetricValues(metric, now - config.METRICS_TTL,
                                                   cache_key=metric, cache_ttl=cache_ttl)
 
@@ -105,9 +105,9 @@ class Trigger:
                             if "value" in metric_state:
                                 del metric_state["value"]
                             yield self.compare_state(metric_state,
-                                                    t1.last_state,
-                                                    value_timestamp + self.ttl, value=None,
-                                                    metric=t1.name)
+                                                     t1.last_state,
+                                                     value_timestamp + self.ttl, value=None,
+                                                     metric=t1.name)
                             continue
 
                         expression_values = {}
@@ -127,16 +127,16 @@ class Trigger:
                             continue
 
                         expression_values.update({'warn_value': self.struct.get('warn_value'),
-                                                'error_value': self.struct.get('error_value'),
-                                                'PREV_STATE': metric_state['state']})
+                                                  'error_value': self.struct.get('error_value'),
+                                                  'PREV_STATE': metric_state['state']})
 
                         metric_state["state"] = expression.getExpression(self.struct.get('expression'),
-                                                                        **expression_values)
+                                                                         **expression_values)
                         metric_state["value"] = t1_value
                         metric_state["timestamp"] = value_timestamp
                         yield self.compare_state(metric_state, t1.last_state,
-                                                value_timestamp, value=t1_value,
-                                                metric=t1.name)
+                                                 value_timestamp, value=t1_value,
+                                                 metric=t1.name)
 
                     if self.ttl and metric_state["timestamp"] + self.ttl < self.last_check["timestamp"]:
                         log.msg("Metric %s TTL expired for state %s" % (t1.name, metric_state))

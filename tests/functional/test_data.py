@@ -8,7 +8,7 @@ from twisted.web import http, client
 from twisted.web.http_headers import Headers
 from twisted.python.log import ILogObserver
 from twisted.python import log
-from moira.checker import state, check
+from moira.checker import state, worker
 from moira.checker.worker import TriggersCheck
 from moira.metrics import spy
 from moira import logs
@@ -36,8 +36,8 @@ class DataTests(WorkerTests):
         service.start()
         yield self.db.saveTrigger(self.trigger.id, {})
         yield self.db.addTriggerCheck(self.trigger.id)
-        check.ERROR_TIMEOUT = 0.01
-        yield deferLater(reactor, check.PERFORM_INTERVAL * 2, lambda: None)
+        worker.ERROR_TIMEOUT = 0.01
+        yield deferLater(reactor, worker.PERFORM_INTERVAL * 2, lambda: None)
         self.flushLoggedErrors()
         yield service.stop()
 
