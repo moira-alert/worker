@@ -19,14 +19,14 @@ class DataTests(WorkerTests):
     @inlineCallbacks
     def sendTrigger(self, trigger):
         body = client.FileBodyProducer(StringIO(trigger))
-        response = yield self.client.request('PUT', self.url_prefix + 'trigger/{0}'.format(self.trigger_id),
+        response = yield self.client.request('PUT', self.url_prefix + 'trigger/{0}'.format(self.trigger.id),
                                              Headers({'Content-Type': ['application/json']}), body)
         self.assertEqual(http.OK, response.code)
         returnValue(anyjson.loads(trigger))
 
     @inlineCallbacks
     def deleteTrigger(self):
-        response = yield self.client.request('DELETE', self.url_prefix + 'trigger/{0}'.format(self.trigger_id))
+        response = yield self.client.request('DELETE', self.url_prefix + 'trigger/{0}'.format(self.trigger.id))
         self.assertEqual(http.OK, response.code)
 
     @trigger("bad-trigger")
@@ -34,8 +34,8 @@ class DataTests(WorkerTests):
     def testTriggersCheckService(self):
         service = TriggersCheck(self.db)
         service.start()
-        yield self.db.saveTrigger(self.trigger_id, {})
-        yield self.db.addTriggerCheck(self.trigger_id)
+        yield self.db.saveTrigger(self.trigger.id, {})
+        yield self.db.addTriggerCheck(self.trigger.id)
         check.ERROR_TIMEOUT = 0.01
         yield deferLater(reactor, check.PERFORM_INTERVAL * 2, lambda: None)
         self.flushLoggedErrors()
@@ -61,9 +61,11 @@ class DataTests(WorkerTests):
     @trigger("test-trigger-exception")
     @inlineCallbacks
     def testTriggerException(self):
-        yield self.db.saveTrigger(self.trigger_id, {'warn_value': 0, 'error_value': 0})
-        yield self.db.addTriggerCheck(self.trigger_id)
-        yield TriggersCheck.check(self.db, self.trigger_id)
+        yield self.sendTrigger('{"name": "test trigger", "targets": ["m1", "m2"],\
+                                 "expression":"ERROR if t1/t2 else OK"}')
+        yield self.db.sendMetric("m1", "m1", self.now - 1, 0)
+        yield self.db.sendMetric("m2", "m2", self.now - 1, 0)
+        yield self.trigger.check()
         self.flushLoggedErrors()
         events = yield self.db.getEvents()
         self.assertEquals(1, len(events))
@@ -77,20 +79,20 @@ class DataTests(WorkerTests):
         metric2 = 'MoiraFuncTest.supervisord.host.500.state'
         yield self.sendTrigger('{"name": "test trigger", "targets": ["movingAverage(' +
                                pattern + ',10)"], "warn_value": 20, "error_value": 50, "ttl":"600" }')
-        json, trigger = yield self.db.getTrigger(self.trigger_id)
+        json, trigger = yield self.db.getTrigger(self.trigger.id)
         self.assertEquals([pattern], trigger["patterns"])
         yield self.db.sendMetric(pattern, metric1, self.now, 1)
         yield self.db.sendMetric(pattern, metric2, self.now, 1)
         yield self.db.sendMetric(pattern, metric1, self.now - 60, 1)
         yield self.db.sendMetric(pattern, metric2, self.now - 60, 1)
-        yield TriggersCheck.check(self.db, self.trigger_id)
+        yield self.trigger.check()
         yield self.assert_trigger_metric('movingAverage(' +
                                          metric1 + ',10)', 1, state.OK)
         yield self.assert_trigger_metric('movingAverage(' +
                                          metric2 + ',10)', 1, state.OK)
         yield self.sendTrigger('{"name": "test trigger", "targets": ["movingAverage(' +
                                pattern + ',10)"], "warn_value": 20, "error_value": 50, "ttl":"600" }')
-        json, trigger = yield self.db.getTrigger(self.trigger_id)
+        json, trigger = yield self.db.getTrigger(self.trigger.id)
         self.assertEquals([pattern], trigger["patterns"])
 
     @trigger('test-trigger-expression')
@@ -102,14 +104,14 @@ class DataTests(WorkerTests):
                                "' + metric2 + '"], \
                                "expression": "ERROR if t1 > t2 else OK", \
                                "ttl":"600" }')
-        json, trigger = yield self.db.getTrigger(self.trigger_id)
+        json, trigger = yield self.db.getTrigger(self.trigger.id)
         yield self.db.sendMetric(metric1, metric1, self.now - 60, 1)
         yield self.db.sendMetric(metric2, metric2, self.now - 60, 2)
-        yield TriggersCheck.check(self.db, self.trigger_id)
+        yield self.trigger.check()
         yield self.assert_trigger_metric(metric1, 1, state.OK)
         yield self.db.sendMetric(metric1, metric1, self.now, 2)
         yield self.db.sendMetric(metric2, metric2, self.now, 1)
-        yield TriggersCheck.check(self.db, self.trigger_id)
+        yield self.trigger.check()
         yield self.assert_trigger_metric(metric1, 2, state.ERROR)
 
     @trigger('test-trigger-expression-prev-state')
@@ -121,18 +123,18 @@ class DataTests(WorkerTests):
                                "' + metric2 + '"], \
                                "expression": "ERROR if t1 > 10 else PREV_STATE if t2 > 0 else OK", \
                                "ttl":"600" }')
-        json, trigger = yield self.db.getTrigger(self.trigger_id)
+        json, trigger = yield self.db.getTrigger(self.trigger.id)
         yield self.db.sendMetric(metric1, metric1, self.now - 120, 10)
         yield self.db.sendMetric(metric2, metric2, self.now - 120, 0)
-        yield TriggersCheck.check(self.db, self.trigger_id)
+        yield self.trigger.check()
         yield self.assert_trigger_metric(metric1, 10, state.OK)
         yield self.db.sendMetric(metric1, metric1, self.now - 60, 11)
         yield self.db.sendMetric(metric2, metric2, self.now - 60, 1)
-        yield TriggersCheck.check(self.db, self.trigger_id)
+        yield self.trigger.check()
         yield self.assert_trigger_metric(metric1, 11, state.ERROR)
         yield self.db.sendMetric(metric1, metric1, self.now, 9)
         yield self.db.sendMetric(metric2, metric2, self.now, 1)
-        yield TriggersCheck.check(self.db, self.trigger_id)
+        yield self.trigger.check()
         yield self.assert_trigger_metric(metric1, 9, state.ERROR)
 
     @trigger('test-trigger-patterns2')
@@ -141,15 +143,15 @@ class DataTests(WorkerTests):
         metric = 'MoiraFuncTest.supervisord.host.state'
         yield self.sendTrigger('{"name": "test trigger", "targets": ["movingAverage(' +
                                metric + ', 10)"], "warn_value": 20, "error_value": 50, "ttl":"600" }')
-        json, trigger = yield self.db.getTrigger(self.trigger_id)
+        json, trigger = yield self.db.getTrigger(self.trigger.id)
         self.assertEquals([metric], trigger["patterns"])
         yield self.db.sendMetric(metric, metric, self.now - 60, 1)
-        yield TriggersCheck.check(self.db, self.trigger_id)
+        yield self.trigger.check()
         yield self.assert_trigger_metric('movingAverage(' +
                                          metric + ',10)', 1, state.OK)
         yield self.sendTrigger('{"name": "test trigger", "targets": ["movingAverage(transformNull(' +
                                metric + ', 0), 10)"], "warn_value": 20, "error_value": 50, "ttl":"600" }')
-        json, trigger = yield self.db.getTrigger(self.trigger_id)
+        json, trigger = yield self.db.getTrigger(self.trigger.id)
         self.assertEquals([metric], trigger["patterns"])
 
     @trigger('test-trigger-patterns3')
@@ -159,7 +161,7 @@ class DataTests(WorkerTests):
         yield self.sendTrigger('{"name": "test trigger", "targets": ["movingAverage(groupByNode(' +
                                pattern + ',2,\'maxSeries\'),10)"],' +
                                '"warn_value": 20, "error_value": 50, "ttl":"600" }')
-        json, trigger = yield self.db.getTrigger(self.trigger_id)
+        json, trigger = yield self.db.getTrigger(self.trigger.id)
         self.assertEquals([pattern], trigger["patterns"])
 
     @trigger('test-trigger-exclude')
@@ -172,7 +174,7 @@ class DataTests(WorkerTests):
                                ', \'two\')"], "warn_value": 20, "error_value": 50, "ttl":"600" }')
         yield self.db.sendMetric(pattern, metric1, self.now - 60, 1)
         yield self.db.sendMetric(pattern, metric2, self.now - 60, 60)
-        yield TriggersCheck.check(self.db, self.trigger_id)
+        yield self.trigger.check()
         yield self.assert_trigger_metric(metric1, 1, state.OK)
         yield self.assert_trigger_metric(metric2, None, None)
 
@@ -185,7 +187,7 @@ class DataTests(WorkerTests):
                                ', 0),2)"], "warn_value": 20, "error_value": 50, "ttl":"600" }')
         yield self.db.sendMetric(pattern, metric1, self.now - 180, 5)
         yield self.db.sendMetric(pattern, metric1, self.now - 60, 5)
-        yield TriggersCheck.check(self.db, self.trigger_id)
+        yield self.trigger.check()
         yield self.assert_trigger_metric('movingAverage(transformNull(' + metric1 + ',0),2)', 2.5, state.OK)
 
     @trigger('test-trigger-alias-max')
@@ -216,7 +218,7 @@ class DataTests(WorkerTests):
         yield self.db.sendMetric(pattern, metric, begin, 10)
         yield self.db.sendMetric(pattern, metric, begin + 60, 20)
         yield self.db.sendMetric(pattern, metric, begin + 120, 30)
-        yield TriggersCheck.check(self.db, self.trigger_id, fromTime=begin, now=begin + 120)
+        yield self.trigger.check(fromTime=begin, now=begin + 120)
         yield self.assert_trigger_metric('summarize(' + metric +
                                          ', "10min", "sum")', 60, state.ERROR)
 
@@ -228,7 +230,7 @@ class DataTests(WorkerTests):
                                ', \'10min\', \'min\')"],  "warn_value": 0.001, "error_value": 50, "ttl":"3600" }')
         begin = self.now - self.now % 600
         yield self.db.sendMetric(metric, metric, begin + 1, 10)
-        yield TriggersCheck.check(self.db, self.trigger_id, fromTime=begin, now=begin + 600)
+        yield self.trigger.check(fromTime=begin, now=begin + 600)
         yield self.assert_trigger_metric('summarize(' + metric +
                                          ', "10min", "min")', 10, state.WARN)
 
@@ -240,7 +242,7 @@ class DataTests(WorkerTests):
         yield self.sendTrigger('{"name": "test trigger", "targets": ["aliasByNode(' + pattern +
                                ', 3)"],  "warn_value": 20, "error_value": 50, "ttl":"600" }')
         yield self.db.sendMetric(pattern, metric1, self.now - 60, 30)
-        yield TriggersCheck.check(self.db, self.trigger_id)
+        yield self.trigger.check()
         yield self.assert_trigger_metric('one', 30, state.WARN)
 
     @trigger('test-trigger-group')
@@ -255,7 +257,7 @@ class DataTests(WorkerTests):
         yield self.db.sendMetric(pattern, metric1, self.now - 1, 0)
         yield self.db.sendMetric(pattern, metric2, self.now - 1, 10)
         yield self.db.sendMetric(pattern, metric3, self.now - 1, 80)
-        yield TriggersCheck.check(self.db, self.trigger_id)
+        yield self.trigger.check()
         yield self.assert_trigger_metric('state', 30, state.WARN)
 
     @trigger('test-trigger-min-series')
@@ -270,7 +272,7 @@ class DataTests(WorkerTests):
         yield self.db.sendMetric(pattern, metric1, self.now - 1, 5)
         yield self.db.sendMetric(pattern, metric2, self.now - 1, 10)
         yield self.db.sendMetric(pattern, metric3, self.now - 1, 80)
-        yield TriggersCheck.check(self.db, self.trigger_id)
+        yield self.trigger.check()
         yield self.assert_trigger_metric('minSeries(' + pattern +
                                          ')', 5, state.OK)
 
@@ -283,11 +285,11 @@ class DataTests(WorkerTests):
         yield self.db.sendMetric(metric, metric, self.now - 180, 10)
         yield self.db.sendMetric(metric, metric, self.now - 120, 20)
         yield self.db.sendMetric(metric, metric, self.now - 60, 30)
-        yield TriggersCheck.check(self.db, self.trigger_id, now=self.now)
+        yield self.trigger.check(now=self.now)
         yield self.assert_trigger_metric('movingAverage(' + metric +
                                          ',3)', 20, state.WARN)
         yield self.db.sendMetric(metric, metric, self.now, 40)
-        yield TriggersCheck.check(self.db, self.trigger_id, now=self.now + 10)
+        yield self.trigger.check(now=self.now + 10)
         yield self.assert_trigger_metric('movingAverage(' + metric +
                                          ',3)', 30, state.ERROR)
 
@@ -300,11 +302,11 @@ class DataTests(WorkerTests):
         yield self.db.sendMetric(metric, metric, self.now - 180, 10)
         yield self.db.sendMetric(metric, metric, self.now - 120, 20)
         yield self.db.sendMetric(metric, metric, self.now - 60, 30)
-        yield TriggersCheck.check(self.db, self.trigger_id, now=self.now)
+        yield self.trigger.check(now=self.now)
         yield self.assert_trigger_metric('movingAverage(' + metric +
                                          ',3)', 10, state.OK)
         yield self.db.sendMetric(metric, metric, self.now, 40)
-        yield TriggersCheck.check(self.db, self.trigger_id, now=self.now + 10)
+        yield self.trigger.check(now=self.now + 10)
         yield self.assert_trigger_metric('movingAverage(' + metric +
                                          ',3)', 20, state.WARN)
 
@@ -320,7 +322,7 @@ class DataTests(WorkerTests):
         yield self.db.sendMetric(metric1, metric1, self.now - 1, 1000)
         yield self.db.sendMetric(metric2, metric2, self.now - 1, 1000)
         yield self.db.sendMetric(metric3, metric3, self.now - 1, 4000)
-        yield TriggersCheck.check(self.db, self.trigger_id)
+        yield self.trigger.check()
         yield self.assert_trigger_metric(1, 50, state.OK)
 
     @trigger('test-events')
@@ -331,11 +333,11 @@ class DataTests(WorkerTests):
                                '"],  "warn_value": 60, "error_value": 90, "ttl":"600" }')
         yield self.db.sendMetric(metric, metric, self.now - 180, 1000)
         yield self.db.sendMetric(metric, metric, self.now - 60, 1000)
-        yield TriggersCheck.check(self.db, self.trigger_id)
+        yield self.trigger.check()
         yield self.db.sendMetric(metric, metric, self.now, 10)
         yield self.protocol.messageReceived(None, "moira-func-test", '{"pattern":"' + metric +
                                             '", "metric":"' + metric + '"}', nocache=True)
-        yield TriggersCheck.check(self.db, self.trigger_id, now=self.now + 1)
+        yield self.trigger.check(now=self.now + 1)
         events = yield self.db.getEvents()
         self.assertEquals(len(events), 2)
         self.assertEquals(events[0]["state"], state.OK)
@@ -349,9 +351,9 @@ class DataTests(WorkerTests):
                                '"],  "warn_value": 60, "error_value": 90, "ttl":"600" }')
         yield self.db.sendMetric(metric, metric, self.now - 180, 1000)
         yield self.db.sendMetric(metric, metric, self.now - 60, 1000)
-        yield TriggersCheck.check(self.db, self.trigger_id)
-        yield TriggersCheck.check(self.db, self.trigger_id)
-        yield TriggersCheck.check(self.db, self.trigger_id)
+        yield self.trigger.check()
+        yield self.trigger.check()
+        yield self.trigger.check()
         events = yield self.db.getEvents()
         self.assertEquals(len(events), 1)
         self.assertEquals(events[0]["state"], state.ERROR)
@@ -363,12 +365,12 @@ class DataTests(WorkerTests):
         yield self.sendTrigger('{"name": "test trigger", "targets": ["' + metric +
                                '"],  "warn_value": 1, "error_value": 5, "ttl":"600", "ttl_state": "OK" }')
         yield self.db.sendMetric(metric, metric, self.now - 1, 1)
-        yield TriggersCheck.check(self.db, self.trigger_id)
+        yield self.trigger.check()
         self.assert_trigger_metric(metric, 1, state.WARN)
-        yield TriggersCheck.check(self.db, self.trigger_id, now=self.now + 120)
+        yield self.trigger.check(now=self.now + 120)
         self.assert_trigger_metric(metric, 1, state.WARN)
-        yield TriggersCheck.check(self.db, self.trigger_id, now=self.now + 601)
-        yield TriggersCheck.check(self.db, self.trigger_id, now=self.now + 602)
+        yield self.trigger.check(now=self.now + 601)
+        yield self.trigger.check(now=self.now + 602)
         self.assert_trigger_metric(metric, None, state.OK)
         events = yield self.db.getEvents()
         self.assertEquals(len(events), 2)
@@ -399,12 +401,12 @@ class DataTests(WorkerTests):
 
         # generate event
         yield self.db.sendMetric(metric, metric, 1444471200, 1)  # Saturday @ 10:00am (UTC)
-        yield TriggersCheck.check(self.db, self.trigger_id, now=1444471200)
+        yield self.trigger.check(now=1444471200)
         self.assert_trigger_metric(metric, 1, state.WARN)
 
         # don't generate event
         yield self.db.sendMetric(metric, metric, 1444644000, 10)  # Monday @ 10:00am (UTC)
-        yield TriggersCheck.check(self.db, self.trigger_id, now=1444644000)
+        yield self.trigger.check(now=1444644000)
         self.assert_trigger_metric(metric, 10, state.ERROR)
 
         events = yield self.db.getEvents()
@@ -412,12 +414,12 @@ class DataTests(WorkerTests):
 
         # generate missed event
         yield self.db.sendMetric(metric, metric, 1444730400, 10)  # Tuesday @ 10:00am (UTC)
-        yield TriggersCheck.check(self.db, self.trigger_id, now=1444730400)
+        yield self.trigger.check(now=1444730400)
         self.assert_trigger_metric(metric, 10, state.ERROR)
 
         # check event not duplicated
         yield self.db.sendMetric(metric, metric, 1444730460, 11)  # Tuesday @ 10:01am (UTC)
-        yield TriggersCheck.check(self.db, self.trigger_id, now=1444730460)
+        yield self.trigger.check(now=1444730460)
         self.assert_trigger_metric(metric, 11, state.ERROR)
 
         events = yield self.db.getEvents()
@@ -430,14 +432,14 @@ class DataTests(WorkerTests):
         yield self.sendTrigger('{"name": "test trigger", "targets": ["' +
                                metric + '"], "warn_value": 60, "error_value": 90, "ttl":60 }')
         yield self.db.sendMetric(metric, metric, self.now - 180, 1000)
-        yield TriggersCheck.check(self.db, self.trigger_id)
+        yield self.trigger.check()
         yield self.assert_trigger_metric(metric, 1000, state.ERROR)
-        yield TriggersCheck.check(self.db, self.trigger_id)
+        yield self.trigger.check()
         yield self.assert_trigger_metric(metric, None, state.NODATA)
         yield self.db.sendMetric(metric, metric, self.now, 10)
-        yield TriggersCheck.check(self.db, self.trigger_id, now=self.now + 1)
+        yield self.trigger.check(now=self.now + 1)
         yield self.assert_trigger_metric(metric, 10, state.OK)
-        yield TriggersCheck.check(self.db, self.trigger_id, now=self.now + 61)
+        yield self.trigger.check(now=self.now + 61)
         events = yield self.db.getEvents()
         self.assertEquals(len(events), 3)
         self.assertEquals(events[0]["state"], state.OK)
@@ -454,12 +456,12 @@ class DataTests(WorkerTests):
                                "warn_value": 60, "error_value": 90, "ttl":120 }')
         yield self.db.sendMetric(pattern, metric1, self.now - 3600, 5)
         yield self.db.sendMetric(pattern, metric2, self.now - 60, 5)
-        yield TriggersCheck.check(self.db, self.trigger_id)
+        yield self.trigger.check()
         yield self.assert_trigger_metric('sumSeries(' + pattern + ')', 5, state.OK)
         yield self.db.cleanupMetricValues(metric2, self.now)
-        yield TriggersCheck.check(self.db, self.trigger_id, now=self.now + 61)
+        yield self.trigger.check(now=self.now + 61)
         yield self.assert_trigger_metric('sumSeries(' + pattern + ')', 5, state.OK)
-        yield TriggersCheck.check(self.db, self.trigger_id, now=self.now + 62)
+        yield self.trigger.check(now=self.now + 62)
         yield self.assert_trigger_metric('sumSeries(' + pattern + ')', None, state.NODATA)
 
     @trigger('test-ttl')
@@ -469,16 +471,16 @@ class DataTests(WorkerTests):
         yield self.sendTrigger('{"name": "test trigger", "targets": ["' +
                                metric + '"], "warn_value": 1, "error_value": 5, "ttl":600, "ttl_state":"OK" }')
         yield self.db.sendMetric(metric, metric, self.now - 2400, 1)
-        yield TriggersCheck.check(self.db, self.trigger_id, now=self.now - 2400)
+        yield self.trigger.check(now=self.now - 2400)
         yield self.assert_trigger_metric(metric, 1, state.WARN)
-        yield TriggersCheck.check(self.db, self.trigger_id, now=self.now - 2200)
-        yield TriggersCheck.check(self.db, self.trigger_id, now=self.now - 1000)
-        yield TriggersCheck.check(self.db, self.trigger_id, now=self.now)
+        yield self.trigger.check(now=self.now - 2200)
+        yield self.trigger.check(now=self.now - 1000)
+        yield self.trigger.check(now=self.now)
         yield self.assert_trigger_metric(metric, None, state.OK)
         yield self.db.sendMetric(metric, metric, self.now, 1)
-        yield TriggersCheck.check(self.db, self.trigger_id, now=self.now)
+        yield self.trigger.check(now=self.now)
         yield self.assert_trigger_metric(metric, 1, state.WARN)
-        yield TriggersCheck.check(self.db, self.trigger_id, now=self.now + 1)
+        yield self.trigger.check(now=self.now + 1)
 
     @trigger('test-ttl')
     @inlineCallbacks
@@ -487,10 +489,10 @@ class DataTests(WorkerTests):
         yield self.sendTrigger('{"name": "test trigger", "targets": ["' +
                                metric + '"], "warn_value": 60, "error_value": 90, "ttl":60 }')
         yield self.db.sendMetric(metric, metric, self.now - 180, 1000)
-        yield TriggersCheck.check(self.db, self.trigger_id)
+        yield self.trigger.check()
         yield self.assert_trigger_metric(metric, 1000, state.ERROR)
         yield self.db.sendMetric(metric, metric, self.now - 120, 1000)
-        yield TriggersCheck.check(self.db, self.trigger_id)
+        yield self.trigger.check()
         yield self.assert_trigger_metric(metric, None, state.NODATA)
 
     @trigger('test-map-reduce')
@@ -509,7 +511,7 @@ class DataTests(WorkerTests):
         yield self.db.sendMetric(pattern, metric2, self.now - 1, 100)
         yield self.db.sendMetric(pattern, metric3, self.now - 1, 30)
         yield self.db.sendMetric(pattern, metric4, self.now - 1, 60)
-        yield TriggersCheck.check(self.db, self.trigger_id)
+        yield self.trigger.check()
         yield self.assert_trigger_metric('one', 60, state.WARN)
         yield self.assert_trigger_metric('two', 50, state.OK)
 
@@ -521,7 +523,7 @@ class DataTests(WorkerTests):
                                metric + '"], "warn_value": 60, "error_value": 90 }')
         yield self.db.sendMetric(metric, metric, self.now - 3600, 1)
         yield self.db.sendMetric(metric, metric, self.now - 60, 1)
-        yield TriggersCheck.check(self.db, self.trigger_id, now=self.now + 60, cache_ttl=0)
+        yield self.trigger.check(now=self.now + 60, cache_ttl=0)
         yield self.assert_trigger_metric(metric, 1, state.OK)
         values = yield self.db.getMetricValues(metric, self.now - 3600)
         self.assertEquals(len(values), 1)
@@ -547,12 +549,12 @@ class DataTests(WorkerTests):
                                "endOffset":1199, \
                                "tzOffset":-300}}')
 
+        yield self.trigger.init(now=self.now)
         day_begin = self.now - self.now % (3600 * 24)
-        json, trigger = yield self.db.getTrigger(self.trigger_id)
-        self.assertFalse(TriggersCheck.isTriggerSchedEnabled(trigger, day_begin + 3 * 3600 - 1))
-        self.assertTrue(TriggersCheck.isTriggerSchedEnabled(trigger, day_begin + 3 * 3600))
-        self.assertTrue(TriggersCheck.isTriggerSchedEnabled(trigger, day_begin + 15 * 3600 - 1))
-        self.assertFalse(TriggersCheck.isTriggerSchedEnabled(trigger, day_begin + 15 * 3600))
+        self.assertFalse(self.trigger.isSchedAllows(day_begin + 3 * 3600 - 1))
+        self.assertTrue(self.trigger.isSchedAllows(day_begin + 3 * 3600))
+        self.assertTrue(self.trigger.isSchedAllows(day_begin + 15 * 3600 - 1))
+        self.assertFalse(self.trigger.isSchedAllows(day_begin + 15 * 3600))
 
     @trigger('test-schedule2')
     @inlineCallbacks
@@ -572,14 +574,14 @@ class DataTests(WorkerTests):
                                "endOffset":1439, \
                                "tzOffset": -300}}')
 
+        yield self.trigger.init(now=self.now)
         day_begin = self.now - self.now % (3600 * 24)
-        json, trigger = yield self.db.getTrigger(self.trigger_id)
         for h in range(0, 24):
-            self.assertTrue(TriggersCheck.isTriggerSchedEnabled(trigger, day_begin + 3600 * h))
+            self.assertTrue(self.trigger.isSchedAllows(day_begin + 3600 * h))
 
     @inlineCallbacks
     def assert_trigger_metric(self, metric, value, state):
-        check = yield self.db.getTriggerLastCheck(self.trigger_id)
+        check = yield self.db.getTriggerLastCheck(self.trigger.id)
         log.msg("Received check: %s" % check)
         self.assertIsNot(check, None)
         metric = [m for m in check["metrics"].itervalues()][0] \

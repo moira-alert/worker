@@ -38,7 +38,10 @@ def resolve_patterns(request, expression_values):
     target_num = 1
     for target in request.body_json["targets"]:
         target_time_series = yield evaluateTarget(requestContext, target)
-        expression_values["t%s" % target_num] = 42 if len(target_time_series) == 0 else target_time_series[-1]
+        target_name = "t%s" % target_num
+        expression_values[target_name] = 42
+        if len(target_time_series) > 0 and len(target_time_series[0]) > 0:
+            expression_values[target_name] = target_time_series[0][-1]
         target_num += 1
         for pattern, resolve in requestContext['graphite_patterns'].iteritems():
             for r in resolve:

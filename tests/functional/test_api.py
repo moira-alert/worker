@@ -32,21 +32,21 @@ class ApiTests(WorkerTests):
     @trigger("not-existing")
     @inlineCallbacks
     def testTriggerNotFound(self):
-        response, body = yield self.request('GET', 'trigger/{0}'.format(self.trigger_id), state=http.NOT_FOUND)
+        response, body = yield self.request('GET', 'trigger/{0}'.format(self.trigger.id), state=http.NOT_FOUND)
 
     @trigger("throttling")
     @inlineCallbacks
     def testThrottling(self):
-        response, body = yield self.request('PUT', 'trigger/{0}'.format(self.trigger_id),
+        response, body = yield self.request('PUT', 'trigger/{0}'.format(self.trigger.id),
                                             '{"name": "test trigger", "targets": ["DevOps.Metric"], \
                                              "warn_value": "1e-7", "error_value": 50, "tags": ["tag1", "tag2"] }',
                                             )
-        yield self.db.setTriggerThrottling(self.trigger_id, self.now + 3600)
-        yield self.db.addThrottledEvent(self.trigger_id, self.now + 3600, {'trigger_id': self.trigger_id})
-        response, json = yield self.request('GET', 'trigger/{0}/throttling'.format(self.trigger_id))
+        yield self.db.setTriggerThrottling(self.trigger.id, self.now + 3600)
+        yield self.db.addThrottledEvent(self.trigger.id, self.now + 3600, {'trigger_id': self.trigger.id})
+        response, json = yield self.request('GET', 'trigger/{0}/throttling'.format(self.trigger.id))
         self.assertTrue(json['throttling'])
-        response, json = yield self.request('DELETE', 'trigger/{0}/throttling'.format(self.trigger_id))
-        response, json = yield self.request('GET', 'trigger/{0}/throttling'.format(self.trigger_id))
+        response, json = yield self.request('DELETE', 'trigger/{0}/throttling'.format(self.trigger.id))
+        response, json = yield self.request('GET', 'trigger/{0}/throttling'.format(self.trigger.id))
         self.assertFalse(json['throttling'])
 
     @inlineCallbacks
@@ -68,19 +68,19 @@ class ApiTests(WorkerTests):
     @trigger("delete-tag")
     @inlineCallbacks
     def testTagDeletion(self):
-        response, body = yield self.request('PUT', 'trigger/{0}'.format(self.trigger_id),
+        response, body = yield self.request('PUT', 'trigger/{0}'.format(self.trigger.id),
                                             '{"name": "test trigger", "targets": ["sumSeries(*)"], \
                                              "warn_value": "1e-7", "error_value": 50, "tags": ["tag1", "tag2"] }',
                                             )
-        response, body = yield self.request('GET', 'trigger/{0}'.format(self.trigger_id))
+        response, body = yield self.request('GET', 'trigger/{0}'.format(self.trigger.id))
         response, body = yield self.request('DELETE', 'tag/tag1', state=http.BAD_REQUEST)
-        response, body = yield self.request('DELETE', 'trigger/{0}'.format(self.trigger_id))
+        response, body = yield self.request('DELETE', 'trigger/{0}'.format(self.trigger.id))
         response, body = yield self.request('DELETE', 'tag/tag1')
 
     @trigger("good-trigger")
     @inlineCallbacks
     def testTriggers(self):
-        response, body = yield self.request('PUT', 'trigger/{0}'.format(self.trigger_id),
+        response, body = yield self.request('PUT', 'trigger/{0}'.format(self.trigger.id),
                                             '{"name": "test trigger", "targets": ["sumSeries(*)"], \
                                              "warn_value": "1e-7", "error_value": 50, "tags": ["tag1", "tag2"] }',
                                             )
@@ -88,14 +88,14 @@ class ApiTests(WorkerTests):
         response, patterns = yield self.request('GET', 'pattern')
         self.assertEqual(2, len(tags["list"]))
         self.assertEqual(1, len(patterns["list"]))
-        self.assertEqual(self.trigger_id, patterns["list"][0]["triggers"][0]["id"])
+        self.assertEqual(self.trigger.id, patterns["list"][0]["triggers"][0]["id"])
         response, triggers = yield self.request('GET', 'trigger')
         self.assertEqual(1, len(triggers["list"]))
 
     @trigger("expression-trigger")
     @inlineCallbacks
     def testTriggers(self):
-        response, body = yield self.request('PUT', 'trigger/{0}'.format(self.trigger_id),
+        response, body = yield self.request('PUT', 'trigger/{0}'.format(self.trigger.id),
                                             '{"name": "test trigger", "targets": ["sumSeries(*)"], \
                                              "tags": ["tag1", "tag2"], "expression": "ERROR if t1 > 1 else OK" }',
                                             )
@@ -105,7 +105,7 @@ class ApiTests(WorkerTests):
     @trigger("not-json-trigger")
     @inlineCallbacks
     def testSendNotJsonTrigger(self):
-        response, body = yield self.request('PUT', 'trigger/{0}'.format(self.trigger_id),
+        response, body = yield self.request('PUT', 'trigger/{0}'.format(self.trigger.id),
                                             "i am not json", http.BAD_REQUEST)
         self.flushLoggedErrors()
         self.assertEqual("Content is not json", body)
@@ -113,7 +113,7 @@ class ApiTests(WorkerTests):
     @trigger("invalid-expression-trigger")
     @inlineCallbacks
     def testSendInvalidExpressionTrigger(self):
-        response, body = yield self.request('PUT', 'trigger/{0}'.format(self.trigger_id),
+        response, body = yield self.request('PUT', 'trigger/{0}'.format(self.trigger.id),
                                             '{"name":"test trigger","targets":["metric"], \
                                              "warn_value":-0.1, "error_value":0.1,"ttl":600,"ttl_state":"NODATA", \
                                              "tags":["tag1"],"expression":"ERROR if"}', http.BAD_REQUEST)
@@ -123,7 +123,7 @@ class ApiTests(WorkerTests):
     @trigger("wrong-time-span")
     @inlineCallbacks
     def testSendWrongTimeSpan(self):
-        response, body = yield self.request('PUT', 'trigger/{0}'.format(self.trigger_id),
+        response, body = yield self.request('PUT', 'trigger/{0}'.format(self.trigger.id),
                                             '{"name": "test trigger", "targets": ["movingAverage(*, \\"10m\\")"], \
                                              "warn_value": "1e-7", "error_value": 50}', http.BAD_REQUEST)
         self.flushLoggedErrors()
@@ -132,7 +132,7 @@ class ApiTests(WorkerTests):
     @trigger("without-warn-value")
     @inlineCallbacks
     def testSendWithoutWarnValue(self):
-        response, body = yield self.request('PUT', 'trigger/{0}'.format(self.trigger_id),
+        response, body = yield self.request('PUT', 'trigger/{0}'.format(self.trigger.id),
                                             '{"name": "test trigger", "targets": ["sumSeries(*)"], "error_value": 50 }',
                                             http.BAD_REQUEST)
         self.flushLoggedErrors()
@@ -142,20 +142,20 @@ class ApiTests(WorkerTests):
     @inlineCallbacks
     def testEvents(self):
         yield self.db.pushEvent({
-            "trigger_id": self.trigger_id,
+            "trigger_id": self.trigger.id,
             "state": state.OK,
             "old_state": state.WARN,
             "timestamp": self.now - 120,
             "metric": "test metric"
         })
         yield self.db.pushEvent({
-            "trigger_id": self.trigger_id,
+            "trigger_id": self.trigger.id,
             "state": state.WARN,
             "old_state": state.OK,
             "timestamp": self.now,
             "metric": "test metric"
         })
-        response, events = yield self.request('GET', 'event/{0}'.format(self.trigger_id))
+        response, events = yield self.request('GET', 'event/{0}'.format(self.trigger.id))
         self.assertEqual(2, len(events['list']))
         response, events = yield self.request('GET', 'event')
         self.assertEqual(2, len(events['list']))
@@ -222,18 +222,18 @@ class ApiTests(WorkerTests):
         metric = "devops.functest.m"
         yield self.db.sendMetric(metric, metric, self.now - 60, 1)
         yield self.db.sendMetric(metric, metric, self.now, 2)
-        response, body = yield self.request('PUT', 'trigger/{0}'.format(self.trigger_id),
+        response, body = yield self.request('PUT', 'trigger/{0}'.format(self.trigger.id),
                                             '{"name": "test trigger", "targets": ["' + metric + '"], \
                                              "warn_value": 5, "error_value": 10 }',
                                             )
         response, metrics = yield self.request('GET', 'trigger/{0}/metrics?from={1}&to={2}'
-                                               .format(self.trigger_id, self.now - 60, self.now))
+                                               .format(self.trigger.id, self.now - 60, self.now))
         self.assertEqual([1, 2], [v['value'] for v in metrics[metric]])
         metrics = yield self.db.getPatternMetrics(metric)
         self.assertEqual([metric], list(metrics))
-        yield check.TriggersCheck.check(self.db, self.trigger_id)
+        yield self.trigger.check()
         response, data = yield self.request('DELETE', 'trigger/{0}/metrics?name={1}'
-                                            .format(self.trigger_id, metric))
+                                            .format(self.trigger.id, metric))
         metrics = yield self.db.getPatternMetrics(metric)
         self.assertEqual(len(metrics), 0)
 
@@ -242,17 +242,17 @@ class ApiTests(WorkerTests):
     def testMaintenance(self):
         metric = "devops.functest.m"
         yield self.db.sendMetric(metric, metric, self.now - 60, 0)
-        response, body = yield self.request('PUT', 'trigger/{0}'.format(self.trigger_id),
+        response, body = yield self.request('PUT', 'trigger/{0}'.format(self.trigger.id),
                                             '{"name": "test trigger", "targets": ["' + metric + '"], \
                                              "warn_value": 0, "error_value": 1, "tags":["tag1"] }',
                                             )
         response, metrics = yield self.request('PUT', 'tag/tag1/data', anyjson.dumps({"maintenance": True}))
-        yield check.TriggersCheck.check(self.db, self.trigger_id, now=self.now - 1)
+        yield self.trigger.check(now=self.now - 1)
         events = yield self.db.getEvents()
         self.assertEqual(0, len(events))
         response, metrics = yield self.request('PUT', 'tag/tag1/data', anyjson.dumps({}))
         yield self.db.sendMetric(metric, metric, self.now, 1)
-        yield check.TriggersCheck.check(self.db, self.trigger_id)
+        yield self.trigger.check()
         events = yield self.db.getEvents()
         self.assertEqual(1, len(events))
 

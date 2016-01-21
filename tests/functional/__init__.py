@@ -17,6 +17,7 @@ from moira.api.site import Site
 from moira.checker.master import MasterProtocol
 from moira.graphite import datalib
 from moira.checker.check import TriggersCheck
+from moira.checker.trigger import Trigger
 from moira import db
 from moira import config
 
@@ -24,7 +25,8 @@ from moira import config
 def trigger(trigger_id):
     def decorator(f):
         def wrapper(*args, **kwargs):
-            args[0].trigger_id = trigger_id
+            worker_test = args[0]
+            worker_test.trigger = Trigger(trigger_id, worker_test.db)
             return f(*args, **kwargs)
         return wrapper
     return decorator
