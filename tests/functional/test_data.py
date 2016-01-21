@@ -71,6 +71,20 @@ class DataTests(WorkerTests):
         self.assertEquals(1, len(events))
         self.assertEquals(events[0]['state'], state.EXCEPTION)
 
+    @trigger("test-trigger-exception-multi-series")
+    @inlineCallbacks
+    def testTriggerMultiSeriesException(self):
+        yield self.sendTrigger('{"name": "test trigger", "targets": ["m1", "m2*"],\
+                                 "expression":"ERROR if t1/t2 else OK"}')
+        yield self.db.sendMetric("m1", "m1", self.now - 1, 1)
+        yield self.db.sendMetric("m2*", "m2.1", self.now - 1, 1)
+        yield self.db.sendMetric("m2*", "m2.2", self.now - 1, 2)
+        yield self.trigger.check()
+        self.flushLoggedErrors()
+        events = yield self.db.getEvents()
+        self.assertEquals(1, len(events))
+        self.assertEquals(events[0]['state'], state.EXCEPTION)
+
     @trigger('test-trigger-patterns')
     @inlineCallbacks
     def testTriggerPatterns(self):
