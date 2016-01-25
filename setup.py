@@ -1,5 +1,10 @@
 from setuptools import setup, find_packages
 
+required = []
+
+with open('requirements.txt') as f:
+    required = f.read().splitlines()
+
 setup(
     name = "moira",
     version = "1.0.5",
@@ -19,4 +24,5 @@ setup(
         'console_scripts': ['moira-api = moira.api.server:run',
                             'moira-checker = moira.checker.server:run'],
     },
+    install_requires=required,
 )
