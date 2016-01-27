@@ -7,7 +7,7 @@ with open('requirements.txt') as f:
 
 setup(
     name = "moira",
-    version = "1.0.5",
+    version = "1.1.0",
     author = "SKB Kontur",
     author_email = "devops@skbkontur.ru",
     description = "Moira checker and api modules",
@@ -22,7 +22,8 @@ setup(
     ],
     entry_points={
         'console_scripts': ['moira-api = moira.api.server:run',
-                            'moira-checker = moira.checker.server:run'],
+                            'moira-checker = moira.checker.server:run',
+                            'moira-update = moira.tools.converter:run'],
     },
     install_requires=required,
 )

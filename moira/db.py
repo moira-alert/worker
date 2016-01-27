@@ -48,7 +48,8 @@ PATTERN_TRIGGERS_PREFIX = "moira-pattern-triggers:{0}"
 TRIGGER_PREFIX = "moira-trigger:{0}"
 EVENTS = "moira-trigger-events"
 EVENTS_UI = "moira-trigger-events-ui"
-METRIC_PREFIX = "moira-metric:{0}"
+METRIC_OLD_PREFIX = "moira-metric:{0}"
+METRIC_PREFIX = "moira-metric-data:{0}"
 METRIC_RETENTION_PREFIX = "moira-metric-retention:{0}"
 TRIGGERS = "moira-triggers-list"
 PATTERNS = "moira-pattern-list"
@@ -845,7 +846,7 @@ class Db(service.Service):
 
         def parse(value):
             parts = value.split()
-            return float(parts[0]), long(parts[1])
+            return long(parts[0]), float(parts[1])
         defer.returnValue([parse(item) for item in result])
 
     @defer.inlineCallbacks
@@ -868,7 +869,7 @@ class Db(service.Service):
 
         def parse(value):
             parts = value.split()
-            return float(parts[0]), long(parts[1])
+            return long(parts[0]), float(parts[1])
 
         results = yield pipeline.execute_pipeline()
         defer.returnValue([[parse(item) for item in result] for result in results])
@@ -1012,7 +1013,7 @@ class Db(service.Service):
     @defer.inlineCallbacks
     def sendMetric(self, pattern, metric, timestamp, value):
         key = METRIC_PREFIX.format(metric)
-        yield self.rc.zadd(key, timestamp, "{0} {1}".format(value, timestamp))
+        yield self.rc.zadd(key, timestamp, "{0} {1}".format(timestamp, value))
         yield self.addPatternMetric(pattern, metric)
 
     @defer.inlineCallbacks
