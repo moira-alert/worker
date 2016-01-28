@@ -121,7 +121,7 @@ def fetchData(requestContext, pathExpr):
         buckets[metric] = {}
         interval = yield db.getMetricRetention(metric, cache_key=metric, cache_ttl=60)
         buckets[metric]['interval'] = interval
-        for timestamp, value in data[i]:
+        for value, timestamp in data[i]:
             bucket = (int)((timestamp - startTime) / interval)
             buckets[metric][bucket] = value
             if max_bucket is None or bucket > max_bucket:

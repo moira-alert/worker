@@ -108,6 +108,11 @@ def docstring_parameters(*sub):
 audit_log = None
 
 
+def extract(value):
+    parts = value.split()
+    return float(parts[1])
+
+
 def audit(f):
     """
     Write json object changes to audit.log
@@ -842,12 +847,9 @@ class Db(service.Service):
         :type startTime: long
         :rtype: list of tuple (float, long)
         """
-        result = yield self.rc.zrangebyscore(METRIC_PREFIX.format(metric), min=startTime, max=endTime)
+        result = yield self.rc.zrangebyscore(METRIC_PREFIX.format(metric), min=startTime, max=endTime, withscores=True)
 
-        def parse(value):
-            parts = value.split()
-            return long(parts[0]), float(parts[1])
-        defer.returnValue([parse(item) for item in result])
+        defer.returnValue([(extract(value), timestamp) for value, timestamp in result])
 
     @defer.inlineCallbacks
     @docstring_parameters(METRIC_PREFIX.format("<metric>"))
@@ -865,14 +867,10 @@ class Db(service.Service):
         """
         pipeline = yield self.rc.pipeline()
         for metric in metrics:
-            pipeline.zrangebyscore(METRIC_PREFIX.format(metric), min=startTime, max=endTime)
-
-        def parse(value):
-            parts = value.split()
-            return long(parts[0]), float(parts[1])
+            pipeline.zrangebyscore(METRIC_PREFIX.format(metric), min=startTime, max=endTime, withscores=True)
 
         results = yield pipeline.execute_pipeline()
-        defer.returnValue([[parse(item) for item in result] for result in results])
+        defer.returnValue([[(extract(value), timestamp) for value, timestamp in result] for result in results])
 
     @cache
     @defer.inlineCallbacks
