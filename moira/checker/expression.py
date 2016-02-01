@@ -36,6 +36,7 @@ def compile_expression(exp):
 def getExpression(trigger_expression=None, **kwargs):
     global_dict = {"OK": state.OK,
                    "WARN": state.WARN,
+                   "WARNING": state.WARN,
                    "ERROR": state.ERROR,
                    "NODATA": state.NODATA}
     for k, v in kwargs.iteritems():
