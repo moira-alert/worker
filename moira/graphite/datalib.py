@@ -115,7 +115,7 @@ def fetchData(requestContext, pathExpr):
     seriesList = []
     buckets = {}
     max_bucket = None
-    data = yield db.getMetricsValues(metrics, startTime, endTime)
+    data = yield db.getMetricsValues(metrics, startTime, ("" if requestContext.get('delta') is None else "(") + str(endTime))
     for i, metric in enumerate(metrics):
         requestContext['metrics'].add(metric)
         buckets[metric] = {}
@@ -130,7 +130,7 @@ def fetchData(requestContext, pathExpr):
     for metric in buckets:
         values = []
         interval = buckets[metric]['interval']
-        for bucket in range(0, (max_bucket or -1) + 1):
+        for bucket in range(0, -1 if max_bucket is None else max_bucket + 1):
             values.append(buckets[metric].get(bucket))
 
         series = TimeSeries(

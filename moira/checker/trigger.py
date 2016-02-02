@@ -49,7 +49,8 @@ class Trigger:
         self.ttl_state = self.struct.get("ttl_state", state.NODATA)
         self.last_check = yield self.db.getTriggerLastCheck(self.id)
         if self.last_check is None:
-            self.last_check = {"metrics": {}, "state": state.NODATA, "timestamp": (fromTime or now) - 600}
+            begin = (fromTime or now) - 3600
+            self.last_check = {"metrics": {}, "state": state.NODATA, "timestamp": begin, "value_timestamp": begin}
         defer.returnValue(True)
 
     @defer.inlineCallbacks
@@ -71,7 +72,7 @@ class Trigger:
                 time_serie.last_state = self.last_check["metrics"].get(
                                         time_serie.name, {
                                             "state": state.NODATA,
-                                            "timestamp": time_serie.start})
+                                            "timestamp": time_serie.start - 3600})
             target_time_series[target_number] = time_series
             target_number += 1
 
@@ -88,11 +89,11 @@ class Trigger:
             raise StopIteration
 
         if fromTime is None:
-            fromTime = self.last_check.get("timestamp", now)
+            fromTime = self.last_check.get("value_timestamp", now)
 
-        requestContext = datalib.createRequestContext(str(fromTime - 600), str(now))
+        requestContext = datalib.createRequestContext(str(fromTime), str(now))
 
-        check = {"metrics": {}, "state": state.OK, "timestamp": now}
+        check = {"metrics": {}, "state": state.OK, "timestamp": now, "value_timestamp": self.last_check["value_timestamp"]}
         try:
             time_series = yield self.get_timeseries(requestContext)
 
@@ -136,6 +137,7 @@ class Trigger:
                                                                          **expression_values)
                         metric_state["value"] = t1_value
                         metric_state["timestamp"] = value_timestamp
+                        check["value_timestamp"] = value_timestamp
                         yield self.compare_state(metric_state, t1.last_state,
                                                  value_timestamp, value=t1_value,
                                                  metric=t1.name)
