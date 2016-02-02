@@ -19,7 +19,6 @@ class MasterProtocol(redis.SubscriberProtocol):
             yield db.addPatternMetric(pattern, metric)
             triggers = yield db.getPatternTriggers(pattern)
             if len(triggers) == 0:
-                yield db.removePatternTriggers(pattern)
                 yield db.removePattern(pattern)
                 metrics = yield db.getPatternMetrics(pattern)
                 for metric in metrics:
