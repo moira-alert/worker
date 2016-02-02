@@ -35,14 +35,15 @@ class Trigger:
 
     @defer.inlineCallbacks
     def init(self, now, fromTime=None):
-        self.maintenance = False
+        self.maintenance = 0
         json, self.struct = yield self.db.getTrigger(self.id, tags=True)
         if json is None:
             defer.returnValue(False)
         for tag in self.struct["tags"]:
             tag_data = yield self.db.getTag(tag)
-            if tag_data.get('maintenance'):
-                self.maintenance = True
+            maintenance = tag_data.get('maintenance', 0)
+            if maintenance > self.maintenance:
+                self.maintenance = maintenance
                 break
         self.ttl = self.struct.get("ttl")
         self.ttl_state = self.struct.get("ttl_state", state.NODATA)
@@ -180,14 +181,20 @@ class Trigger:
             current_state["event_timestamp"] = timestamp
             if value is not None:
                 event["value"] = value
+            current_state["suppressed"] = False
             if self.isSchedAllows(timestamp):
-                if not self.maintenance:
+                state_maintenance = current_state.get("maintenance", 0)
+                if self.maintenance >= timestamp:
+                    current_state["suppressed"] = True
+                    log.msg("Event %s suppressed due maintenance until %s." %
+                            (event, datetime.fromtimestamp(self.maintenance)))
+                elif state_maintenance >= timestamp:
+                    current_state["suppressed"] = True
+                    log.msg("Event %s suppressed due metric %s maintenance until %s." %
+                            (event, metric, datetime.fromtimestamp(state_maintenance)))
+                else:
                     log.msg("Writing new event: %s" % event)
                     yield self.db.pushEvent(event)
-                    current_state["suppressed"] = False
-                else:
-                    current_state["suppressed"] = True
-                    log.msg("Event %s suppressed due maintenance" % str(event))
             else:
                 current_state["suppressed"] = True
                 log.msg("Event %s suppressed due trigger schedule" % str(event))

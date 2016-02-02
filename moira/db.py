@@ -756,9 +756,8 @@ class Db(service.Service):
         :type trigger_id: string
         :rtype: json dict
         """
-        trigger_last_check_json = yield self.rc.get(LAST_CHECK_PREFIX.format(trigger_id))
-        result = anyjson.deserialize(
-            trigger_last_check_json) if trigger_last_check_json is not None else None
+        json = yield self.rc.get(LAST_CHECK_PREFIX.format(trigger_id))
+        result = anyjson.deserialize(json) if json is not None else None
         defer.returnValue(result)
 
     @defer.inlineCallbacks
@@ -775,6 +774,32 @@ class Db(service.Service):
         :type check: json dict
         """
         yield self.rc.set(LAST_CHECK_PREFIX.format(trigger_id), anyjson.serialize(check))
+
+    @defer.inlineCallbacks
+    @docstring_parameters(LAST_CHECK_PREFIX.format("<trigger_id>"))
+    def setTriggerMetricsMaintenance(self, trigger_id, metrics, existing=None):
+        """
+        setTriggerMetricsMaintenance(self, trigger_id, metrics)
+
+        Atomic change of trigger last check and set metric maintenance
+
+        :param trigger_id: trigger identity
+        :type trigger_id: string
+        :param metrics: metrics maintenance flags
+        :type metrics: dict
+        """
+        key = LAST_CHECK_PREFIX.format(trigger_id)
+        json = yield self.rc.get(key)
+        while json is not None:
+            check = anyjson.deserialize(json)
+            metrics_check = check.get("metrics")
+            if metrics_check is not None:
+                for metric, value in metrics.iteritems():
+                    metrics_check[metric]["maintenance"] = value
+            prev = yield self.rc.getset(key, anyjson.serialize(check))
+            if json == prev:
+                break
+            json = prev
 
     @defer.inlineCallbacks
     @docstring_parameters(LAST_CHECK_PREFIX.format("<trigger_id>"))

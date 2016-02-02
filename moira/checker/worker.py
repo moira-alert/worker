@@ -90,7 +90,7 @@ def check(trigger_id):
     @defer.inlineCallbacks
     def start(db):
         trigger = Trigger(trigger_id, db)
-        yield trigger.check(db, trigger_id)
+        yield trigger.check()
         reactor.stop()
 
     run(start)

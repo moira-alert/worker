@@ -237,24 +237,46 @@ class ApiTests(WorkerTests):
         metrics = yield self.db.getPatternMetrics(metric)
         self.assertEqual(len(metrics), 0)
 
-    @trigger("test-maintenance")
+    @trigger("test-trigger-maintenance")
     @inlineCallbacks
-    def testMaintenance(self):
+    def testTriggerMaintenance(self):
         metric = "devops.functest.m"
         yield self.db.sendMetric(metric, metric, self.now - 60, 0)
         response, body = yield self.request('PUT', 'trigger/{0}'.format(self.trigger.id),
                                             '{"name": "test trigger", "targets": ["' + metric + '"], \
                                              "warn_value": 0, "error_value": 1, "tags":["tag1"] }',
                                             )
-        response, metrics = yield self.request('PUT', 'tag/tag1/data', anyjson.dumps({"maintenance": True}))
+        response, _ = yield self.request('PUT', 'tag/tag1/data', anyjson.dumps({"maintenance": self.now}))
         yield self.trigger.check(now=self.now - 1)
         events = yield self.db.getEvents()
         self.assertEqual(0, len(events))
-        response, metrics = yield self.request('PUT', 'tag/tag1/data', anyjson.dumps({}))
+        response, _ = yield self.request('PUT', 'tag/tag1/data', anyjson.dumps({}))
         yield self.db.sendMetric(metric, metric, self.now, 1)
         yield self.trigger.check()
         events = yield self.db.getEvents()
         self.assertEqual(1, len(events))
+
+    @trigger("test-metric-maintenance")
+    @inlineCallbacks
+    def testMetricMaintenance(self):
+        metric = "devops.functest.m"
+        yield self.db.sendMetric(metric, metric, self.now - 60, 0)
+        response, body = yield self.request('PUT', 'trigger/{0}'.format(self.trigger.id),
+                                            '{"name": "test trigger", "targets": ["' + metric + '"], \
+                                             "warn_value": 0, "error_value": 1, "tags":["tag1"] }',
+                                            )
+        yield self.trigger.check(now=self.now - 1)
+        events = yield self.db.getEvents()
+        self.assertEqual(1, len(events))
+        response, _ = yield self.request('PUT', 'trigger/{0}/maintenance'.format(self.trigger.id), anyjson.dumps({metric: self.now}))
+        yield self.db.sendMetric(metric, metric, self.now, 1)
+        yield self.trigger.check()
+        events = yield self.db.getEvents()
+        self.assertEqual(1, len(events))
+        yield self.db.sendMetric(metric, metric, self.now + 60, -1)
+        yield self.trigger.check(now=self.now + 60)
+        events = yield self.db.getEvents()
+        self.assertEqual(2, len(events))
 
     @inlineCallbacks
     def testUserLogin(self):

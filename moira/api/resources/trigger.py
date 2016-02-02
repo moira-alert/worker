@@ -1,7 +1,7 @@
 import uuid
 from twisted.web import http
 from twisted.internet import defer
-from moira.api.request import delayed
+from moira.api.request import delayed, check_json
 from moira.api.resources.metric import Metrics
 from moira.api.resources.redis import RedisResouce
 
@@ -40,6 +40,20 @@ class Throttling(RedisResouce):
         request.finish()
 
 
+class Maintenance(RedisResouce):
+
+    def __init__(self, db, trigger_id):
+        self.trigger_id = trigger_id
+        RedisResouce.__init__(self, db)
+
+    @delayed
+    @check_json
+    @defer.inlineCallbacks
+    def render_PUT(self, request):
+        yield self.db.setTriggerMetricsMaintenance(self.trigger_id, request.body_json)
+        request.finish()
+
+
 class Trigger(RedisResouce):
 
     def __init__(self, db, trigger_id):
@@ -48,6 +62,7 @@ class Trigger(RedisResouce):
         self.putChild("state", State(db, trigger_id))
         self.putChild("throttling", Throttling(db, trigger_id))
         self.putChild("metrics", Metrics(db, trigger_id))
+        self.putChild("maintenance", Maintenance(db, trigger_id))
 
     @delayed
     @defer.inlineCallbacks

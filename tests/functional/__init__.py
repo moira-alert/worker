@@ -80,6 +80,10 @@ class TwistedFakeRedis(FakeStrictRedis):
     def pipeline(self, transaction=True):
         return TwistedFakePipeline(self, transaction)
 
+    def getset(self, name, value):
+        val = self._db.get(name)
+        self._db[name] = value
+        return val
 
 class BodyReceiver(protocol.Protocol):
 
@@ -112,7 +116,6 @@ class WorkerTests(unittest.TestCase):
         self.url_prefix = 'http://localhost:{0}{1}/'.format(
             self.port.getHost().port, site.prefix)
         self.now = int(reactor.seconds())
-        self.trigger_id = None
         self.check = TriggersCheck(self.db)
 
     @inlineCallbacks
