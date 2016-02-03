@@ -93,7 +93,7 @@ class Trigger:
 
         requestContext = datalib.createRequestContext(str(fromTime), str(now))
 
-        check = {"metrics": {}, "state": state.OK, "timestamp": now, "value_timestamp": self.last_check["value_timestamp"]}
+        check = {"metrics": {}, "state": state.OK, "timestamp": now, "value_timestamp": self.last_check.get("value_timestamp", now - 600)}
         try:
             time_series = yield self.get_timeseries(requestContext)
 
