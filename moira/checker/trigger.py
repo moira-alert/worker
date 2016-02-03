@@ -50,7 +50,7 @@ class Trigger:
         self.last_check = yield self.db.getTriggerLastCheck(self.id)
         if self.last_check is None:
             begin = (fromTime or now) - 3600
-            self.last_check = {"metrics": {}, "state": state.NODATA, "timestamp": begin, "value_timestamp": begin}
+            self.last_check = {"metrics": {}, "state": state.NODATA, "timestamp": begin}
         defer.returnValue(True)
 
     @defer.inlineCallbacks
@@ -89,11 +89,11 @@ class Trigger:
             raise StopIteration
 
         if fromTime is None:
-            fromTime = self.last_check.get("value_timestamp", now)
+            fromTime = self.last_check.get("timestamp", now)
 
-        requestContext = datalib.createRequestContext(str(fromTime), str(now))
+        requestContext = datalib.createRequestContext(str(fromTime - (self.ttl or 600)), str(now))
 
-        check = {"metrics": {}, "state": state.OK, "timestamp": now, "value_timestamp": self.last_check.get("value_timestamp", now - 600)}
+        check = {"metrics": {}, "state": state.OK, "timestamp": now}
         try:
             time_series = yield self.get_timeseries(requestContext)
 
@@ -137,7 +137,6 @@ class Trigger:
                                                                          **expression_values)
                         metric_state["value"] = t1_value
                         metric_state["timestamp"] = value_timestamp
-                        check["value_timestamp"] = value_timestamp
                         yield self.compare_state(metric_state, t1.last_state,
                                                  value_timestamp, value=t1_value,
                                                  metric=t1.name)
