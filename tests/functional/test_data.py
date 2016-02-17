@@ -509,6 +509,23 @@ class DataTests(WorkerTests):
         yield self.trigger.check()
         yield self.assert_trigger_metric(metric, None, state.NODATA)
 
+    @trigger('test-data-delay')
+    @inlineCallbacks
+    def testDataDelay(self):
+        metric = 'MoiraFuncTest.metric.one'
+        yield self.sendTrigger('{"name": "test trigger", "targets": ["' +
+                               metric + '"], "warn_value": 60, "error_value": 90, "ttl":600 }')
+        yield self.db.sendMetric(metric, metric, self.now, 10)
+        yield self.trigger.check()
+        yield self.assert_trigger_metric(metric, 10, state.OK)
+        yield self.trigger.check(now=self.now + 60)
+        yield self.db.sendMetric(metric, metric, self.now + 1200, 20)
+        yield self.trigger.check(now=self.now + 1200)
+        yield self.assert_trigger_metric(metric, 20, state.OK)
+        events = yield self.db.getEvents()
+        self.assertEquals(len(events), 1)
+        self.assertEquals(events[0]["state"], state.OK)
+
     @trigger('test-map-reduce')
     @inlineCallbacks
     def testMapReduce(self):
