@@ -14,6 +14,7 @@ class MasterProtocol(redis.SubscriberProtocol):
         try:
             json = anyjson.deserialize(message)
             db = self.factory.db
+            db.last_data = reactor.seconds()
             pattern = json["pattern"]
             metric = json["metric"]
             yield db.addPatternMetric(pattern, metric)
@@ -39,6 +40,7 @@ class MasterService(service.Service):
     def __init__(self, db, channel="metric-event"):
         self.db = db
         self.channel = channel
+        self.db.last_data = reactor.seconds()
 
     @defer.inlineCallbacks
     def startService(self):
@@ -58,10 +60,14 @@ class MasterService(service.Service):
     @defer.inlineCallbacks
     def checkNoData(self):
         try:
-            log.msg("Checking nodata")
-            triggers = yield self.db.getTriggers()
-            for trigger_id in triggers:
-                yield self.db.addTriggerCheck(trigger_id, cache_key=trigger_id, cache_ttl=60)
+            now = reactor.seconds()
+            if self.db.last_data + config.STOP_CHECKING_INTERVAL < now:
+                log.msg("Checking nodata disabled. No metrics for %s seconds" % int(now - self.db.last_data))
+            else:
+                log.msg("Checking nodata")
+                triggers = yield self.db.getTriggers()
+                for trigger_id in triggers:
+                    yield self.db.addTriggerCheck(trigger_id, cache_key=trigger_id, cache_ttl=60)
         except:
             log.err()
 

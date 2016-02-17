@@ -33,6 +33,7 @@ GRAPHITE_PREFIX = 'DevOps.moira'
 GRAPHITE_INTERVAL = 10
 NODATA_CHECK_INTERVAL = 60
 CHECK_INTERVAL = 5
+STOP_CHECKING_INTERVAL = 30
 METRICS_TTL = 3600
 PREFIX = "/api"
 HOSTNAME = socket.gethostname().split('.')[0]
@@ -61,6 +62,7 @@ def read():
     global CHECK_INTERVAL
     global METRICS_TTL
     global ARGS
+    global STOP_CHECKING_INTERVAL
 
     parser = get_parser()
     args = parser.parse_args()
@@ -87,3 +89,4 @@ def read():
             NODATA_CHECK_INTERVAL = cfg['checker'].get('nodata_check_interval', 60)
             CHECK_INTERVAL = cfg['checker'].get('check_interval', 5)
             METRICS_TTL = cfg['checker'].get('metrics_ttl', 3600)
+            STOP_CHECKING_INTERVAL = cfg['checker'].get('stop_checking_interval', 30)
