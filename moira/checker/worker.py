@@ -39,7 +39,8 @@ class TriggersCheck:
                 end = reactor.seconds()
                 spy.TRIGGER_CHECK.report(end - start)
                 trigger_id = yield self.db.getTriggerToCheck()
-            yield task.deferLater(reactor, random.uniform(PERFORM_INTERVAL * 10, PERFORM_INTERVAL * 20), lambda: None)
+                yield task.deferLater(reactor, PERFORM_INTERVAL, lambda: None)
+            yield task.deferLater(reactor, PERFORM_INTERVAL * 2, lambda: None)
         except GeneratorExit:
             pass
         except:
