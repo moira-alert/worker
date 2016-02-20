@@ -22,6 +22,7 @@ def cache(f):
                 defer.returnValue(result)
             timestamp, result = CACHE.get(key, (0, None))
             if timestamp + ttl < now:
+                CACHE[key] = (now, result)
                 result = yield get_value()
                 CACHE[key] = (now, result)
         else:
