@@ -1,4 +1,3 @@
-import random
 from twisted.python import log
 from twisted.internet import defer, reactor, task
 from moira.graphite import datalib

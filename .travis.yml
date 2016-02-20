@@ -7,7 +7,7 @@ install:
   - pip install coveralls
 # command to run tests
 script:
-  cd tests && coverage run --source="../moira/" --omit="../moira/graphite/*,../moira/metrics/*" $(which trial) functional
+  cd tests && coverage run --source="../moira/" --omit="../moira/graphite/*,../moira/metrics/*" $(which trial) functional cache expression
 
 after_success:
   coveralls
