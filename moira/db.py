@@ -37,6 +37,7 @@ Redis database objects:
     - ZRANGE {19}
     - SET {20}
     - KEY {21}
+    - KEY {22}
 """
 
 __docformat__ = 'reStructuredText'
@@ -67,6 +68,7 @@ TRIGGER_THROTTLING_BEGINNING_PREFIX = "moira-notifier-throttling-beginning:{0}"
 TRIGGER_NEXT_PREFIX = "moira-notifier-next:{0}"
 NOTIFIER_NOTIFICATIONS = "moira-notifier-notifications"
 TAG_PREFIX = "moira-tag:{0}"
+TRIGGER_CHECK_LOCK_PREFIX = "moira-metric-check-lock:{0}"
 
 TRIGGER_EVENTS_TTL = 3600 * 24 * 30
 
@@ -95,7 +97,8 @@ current_module.__doc__ = _doc_string.format(
     USER_CONTACTS_PREFIX.format("<login>"),
     TRIGGER_EVENTS.format("<trigger_id>"),
     TRIGGER_THROTTLING_BEGINNING_PREFIX.format("<trigger_id>"),
-    TAG_PREFIX.format("<tag>")
+    TAG_PREFIX.format("<tag>"),
+    TRIGGER_CHECK_LOCK_PREFIX.format("trigger_id")
 )
 
 
@@ -774,6 +777,34 @@ class Db(service.Service):
         :type check: json dict
         """
         yield self.rc.set(LAST_CHECK_PREFIX.format(trigger_id), anyjson.serialize(check))
+
+    @defer.inlineCallbacks
+    @docstring_parameters(TRIGGER_CHECK_LOCK_PREFIX.format("<trigger_id>"))
+    def setTriggerCheckLock(self, trigger_id):
+        """
+        setTriggerCheckLock(self, trigger_id)
+
+        Try to accuire lock for trigger check {0}
+
+        :param trigger_id: trigger identity
+        :type trigger_id: string
+        """
+        ok = yield self.rc.set(TRIGGER_CHECK_LOCK_PREFIX.format(trigger_id), time.time(),
+                               expire=config.CHECK_LOCK_TTL, only_if_not_exists=True)
+        defer.returnValue(ok)
+
+    @defer.inlineCallbacks
+    @docstring_parameters(TRIGGER_CHECK_LOCK_PREFIX.format("<trigger_id>"))
+    def delTriggerCheckLock(self, trigger_id):
+        """
+        delTriggerCheckLock(self, trigger_id)
+
+        Delete lock for trigger check {0}
+
+        :param trigger_id: trigger identity
+        :type trigger_id: string
+        """
+        yield self.rc.delete(TRIGGER_CHECK_LOCK_PREFIX.format(trigger_id))
 
     @defer.inlineCallbacks
     @docstring_parameters(LAST_CHECK_PREFIX.format("<trigger_id>"))

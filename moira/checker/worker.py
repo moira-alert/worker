@@ -1,3 +1,4 @@
+import random
 from twisted.python import log
 from twisted.internet import defer, reactor, task
 from moira.graphite import datalib
@@ -32,14 +33,16 @@ class TriggersCheck:
         try:
             trigger_id = yield self.db.getTriggerToCheck()
             while trigger_id is not None:
-                start = reactor.seconds()
-                trigger = Trigger(trigger_id, self.db)
-                yield trigger.check()
-                end = reactor.seconds()
-                spy.TRIGGER_CHECK.report(end - start)
+                accuired = yield self.db.setTriggerCheckLock(trigger_id)
+                if accuired is not None:
+                    start = reactor.seconds()
+                    trigger = Trigger(trigger_id, self.db)
+                    yield trigger.check()
+                    end = reactor.seconds()
+                    yield self.db.delTriggerCheckLock(trigger_id)
+                    spy.TRIGGER_CHECK.report(end - start)
                 trigger_id = yield self.db.getTriggerToCheck()
-                yield task.deferLater(reactor, PERFORM_INTERVAL, lambda: None)
-            yield task.deferLater(reactor, PERFORM_INTERVAL * 2, lambda: None)
+            yield task.deferLater(reactor, random.uniform(PERFORM_INTERVAL * 10, PERFORM_INTERVAL * 20), lambda: None)
         except GeneratorExit:
             pass
         except:

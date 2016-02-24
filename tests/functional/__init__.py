@@ -85,6 +85,11 @@ class TwistedFakeRedis(FakeStrictRedis):
         self._db[name] = value
         return val
 
+    def set(self, key, value, expire=None, pexpire=None,
+            only_if_not_exists=False, only_if_exists=False):
+        return FakeStrictRedis.set(self, key, value, ex=expire, px=pexpire, nx=only_if_not_exists,
+                                   xx=only_if_exists)
+
 class BodyReceiver(protocol.Protocol):
 
     def __init__(self):
