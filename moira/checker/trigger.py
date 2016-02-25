@@ -117,11 +117,6 @@ class Trigger:
                         if value_timestamp <= t1.last_state["timestamp"]:
                             continue
 
-                        if self.ttl and value_timestamp + self.ttl < self.last_check["timestamp"]:
-                            metric_state["timestamp"] = value_timestamp
-                            yield self.set_nodata(t1.name, metric_state, t1.last_state)
-                            continue
-
                         expression_values = time_series.get_expression_values(t1, value_timestamp)
 
                         t1_value = expression_values["t1"]
@@ -141,8 +136,15 @@ class Trigger:
                                                  value_timestamp, value=t1_value,
                                                  metric=t1.name)
 
+                    # compare with last_check timestamp in case if we have not run checker for a long time
                     if self.ttl and metric_state["timestamp"] + self.ttl < self.last_check["timestamp"]:
-                        yield self.set_nodata(t1.name, metric_state, t1.last_state)
+                        log.msg("Metric %s TTL expired for state %s" % (t1.name, metric_state))
+                        metric_state["state"] = self.ttl_state
+                        metric_state["timestamp"] = self.last_check["timestamp"] - self.ttl
+                        if "value" in metric_state:
+                            del metric_state["value"]
+                        yield self.compare_state(metric_state, t1.last_state, metric_state["timestamp"], metric=t1.name)
+
         except StopIteration:
             raise
         except:
@@ -153,15 +155,6 @@ class Trigger:
         yield self.db.setTriggerLastCheck(self.id, check)
 
     @defer.inlineCallbacks
-    def set_nodata(self, metric, metric_state, last_state):
-        log.msg("Metric %s TTL expired for state %s" % (metric, metric_state))
-        metric_state["state"] = self.ttl_state
-        metric_state["timestamp"] += self.ttl
-        if "value" in metric_state:
-            del metric_state["value"]
-        yield self.compare_state(metric_state, last_state, metric_state["timestamp"], metric=metric)
-
-    @defer.inlineCallbacks
     def compare_state(self,
                       current_state,
                       last_state,
@@ -170,36 +163,43 @@ class Trigger:
                       metric=None):
         current_state_value = current_state["state"]
         last_state_value = last_state["state"]
-        if current_state_value != last_state_value or \
-                (last_state.get("suppressed") and current_state_value != state.OK):
-            event = {
-                "trigger_id": self.id,
-                "state": current_state_value,
-                "old_state": last_state_value,
-                "timestamp": timestamp,
-                "metric": metric
-            }
-            current_state["event_timestamp"] = timestamp
-            if value is not None:
-                event["value"] = value
-            current_state["suppressed"] = False
-            if self.isSchedAllows(timestamp):
-                state_maintenance = current_state.get("maintenance", 0)
-                if self.maintenance >= timestamp:
-                    current_state["suppressed"] = True
-                    log.msg("Event %s suppressed due maintenance until %s." %
-                            (event, datetime.fromtimestamp(self.maintenance)))
-                elif state_maintenance >= timestamp:
-                    current_state["suppressed"] = True
-                    log.msg("Event %s suppressed due metric %s maintenance until %s." %
-                            (event, metric, datetime.fromtimestamp(state_maintenance)))
-                else:
-                    log.msg("Writing new event: %s" % event)
-                    yield self.db.pushEvent(event)
-            else:
-                current_state["suppressed"] = True
-                log.msg("Event %s suppressed due trigger schedule" % str(event))
         last_state["state"] = current_state_value
+
+        if current_state.get("event_timestamp") is None:
+            current_state["event_timestamp"] = timestamp
+
+        if current_state_value == last_state_value:
+            remind_interval = config.BAD_STATES_REMINDER.get(current_state_value)
+            if remind_interval is None or timestamp - last_state.get("event_timestamp", timestamp) < remind_interval:
+                if not last_state.get("suppressed") or current_state_value == state.OK:
+                    raise StopIteration
+        event = {
+            "trigger_id": self.id,
+            "state": current_state_value,
+            "old_state": last_state_value,
+            "timestamp": timestamp,
+            "metric": metric
+        }
+        current_state["event_timestamp"] = timestamp
+        if value is not None:
+            event["value"] = value
+        current_state["suppressed"] = False
+        if self.isSchedAllows(timestamp):
+            state_maintenance = current_state.get("maintenance", 0)
+            if self.maintenance >= timestamp:
+                current_state["suppressed"] = True
+                log.msg("Event %s suppressed due maintenance until %s." %
+                        (event, datetime.fromtimestamp(self.maintenance)))
+            elif state_maintenance >= timestamp:
+                current_state["suppressed"] = True
+                log.msg("Event %s suppressed due metric %s maintenance until %s." %
+                        (event, metric, datetime.fromtimestamp(state_maintenance)))
+            else:
+                log.msg("Writing new event: %s" % event)
+                yield self.db.pushEvent(event)
+        else:
+            current_state["suppressed"] = True
+            log.msg("Event %s suppressed due trigger schedule" % str(event))
 
     def isSchedAllows(self, ts):
         sched = self.struct.get('sched')

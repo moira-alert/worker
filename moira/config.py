@@ -38,6 +38,7 @@ STOP_CHECKING_INTERVAL = 30
 METRICS_TTL = 3600
 PREFIX = "/api"
 HOSTNAME = socket.gethostname().split('.')[0]
+BAD_STATES_REMINDER = {'ERROR': 86400, 'NODATA': 86400}
 ARGS = None
 
 

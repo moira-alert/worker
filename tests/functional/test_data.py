@@ -526,6 +526,20 @@ class DataTests(WorkerTests):
         self.assertEquals(len(events), 1)
         self.assertEquals(events[0]["state"], state.OK)
 
+    @trigger('test-nodata-remind')
+    @inlineCallbacks
+    def testNodataRemind(self):
+        metric = 'MoiraFuncTest.metric.one'
+        yield self.sendTrigger('{"name": "test trigger", "targets": ["' +
+                               metric + '"], "warn_value": 60, "error_value": 90, "ttl":600 }')
+        yield self.trigger.check()
+        yield self.assert_trigger_metric(metric, None, state.NODATA)
+        yield self.trigger.check(now=self.now + 86400)
+        yield self.trigger.check(now=self.now + 86460)
+        events = yield self.db.getEvents()
+        self.assertEquals(len(events), 1)
+        self.assertEquals(events[0]["state"], state.NODATA)
+
     @trigger('test-map-reduce')
     @inlineCallbacks
     def testMapReduce(self):
