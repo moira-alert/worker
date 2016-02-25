@@ -540,6 +540,18 @@ class DataTests(WorkerTests):
         self.assertEquals(len(events), 1)
         self.assertEquals(events[0]["state"], state.NODATA)
 
+    @trigger('test-nodata-deletion')
+    @inlineCallbacks
+    def testNodataDeletion(self):
+        metric = 'MoiraFuncTest.metric.one'
+        yield self.sendTrigger('{"name": "test trigger", "targets": ["' +
+                               metric + '"], "warn_value": 60, "error_value": 90, "ttl":600, "ttl_state": "DEL" }')
+        yield self.trigger.check()
+        yield self.assert_trigger_metric(metric, None, state.NODATA)
+        yield self.trigger.check(now=self.now + 600)
+        check = yield self.db.getTriggerLastCheck(self.trigger.id)
+        self.assertIs(check["metrics"].get(metric), None)
+
     @trigger('test-map-reduce')
     @inlineCallbacks
     def testMapReduce(self):

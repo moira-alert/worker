@@ -139,7 +139,11 @@ class Trigger:
                     # compare with last_check timestamp in case if we have not run checker for a long time
                     if self.ttl and metric_state["timestamp"] + self.ttl < self.last_check["timestamp"]:
                         log.msg("Metric %s TTL expired for state %s" % (t1.name, metric_state))
-                        metric_state["state"] = self.ttl_state
+                        if self.ttl_state == state.DEL and metric_state.get("event_timestamp") is not None:
+                            log.msg("Remove metric %s" % t1.name)
+                            del check["metrics"][t1.name]
+                            continue
+                        metric_state["state"] = state.toMetricState(self.ttl_state)
                         metric_state["timestamp"] = self.last_check["timestamp"] - self.ttl
                         if "value" in metric_state:
                             del metric_state["value"]
