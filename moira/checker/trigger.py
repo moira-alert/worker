@@ -142,6 +142,8 @@ class Trigger:
                         if self.ttl_state == state.DEL and metric_state.get("event_timestamp") is not None:
                             log.msg("Remove metric %s" % t1.name)
                             del check["metrics"][t1.name]
+                            for pattern in self.struct.get("patterns"):
+                                yield self.db.delPatternMetrics(pattern)
                             continue
                         metric_state["state"] = state.toMetricState(self.ttl_state)
                         metric_state["timestamp"] = self.last_check["timestamp"] - self.ttl
