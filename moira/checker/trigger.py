@@ -174,11 +174,6 @@ class Trigger:
         if current_state.get("event_timestamp") is None:
             current_state["event_timestamp"] = timestamp
 
-        if current_state_value == last_state_value:
-            remind_interval = config.BAD_STATES_REMINDER.get(current_state_value)
-            if remind_interval is None or timestamp - last_state.get("event_timestamp", timestamp) < remind_interval:
-                if not last_state.get("suppressed") or current_state_value == state.OK:
-                    raise StopIteration
         event = {
             "trigger_id": self.id,
             "state": current_state_value,
@@ -186,6 +181,17 @@ class Trigger:
             "timestamp": timestamp,
             "metric": metric
         }
+
+        if current_state_value == last_state_value:
+            remind_interval = config.BAD_STATES_REMINDER.get(current_state_value)
+            if remind_interval is None or timestamp - last_state.get("event_timestamp", timestamp) < remind_interval:
+                if not last_state.get("suppressed") or current_state_value == state.OK:
+                    raise StopIteration
+            else:
+                remind_states = " and ".join([s for s in config.BAD_STATES_REMINDER])
+                event["msg"] = "%s are critical conditions that require immediate attention.\
+                                Some of your metrics have been in this state for days.\
+                                If this is a non-critical issue, you should make it a WARN or OK." % remind_states
         current_state["event_timestamp"] = timestamp
         if value is not None:
             event["value"] = value
