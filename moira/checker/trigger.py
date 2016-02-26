@@ -188,10 +188,8 @@ class Trigger:
                 if not last_state.get("suppressed") or current_state_value == state.OK:
                     raise StopIteration
             else:
-                remind_states = " and ".join([s for s in config.BAD_STATES_REMINDER])
-                event["msg"] = "%s are critical conditions that require immediate attention.\
-                                Some of your metrics have been in this state for days.\
-                                If this is a non-critical issue, you should make it a WARN or OK." % remind_states
+                event["msg"] = "This state has been more than %s hours. Please fix it." % \
+                               (remind_interval / 3600)
         current_state["event_timestamp"] = timestamp
         if value is not None:
             event["value"] = value
