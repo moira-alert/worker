@@ -188,7 +188,7 @@ class Trigger:
                 if not last_state.get("suppressed") or current_state_value == state.OK:
                     raise StopIteration
             else:
-                event["msg"] = "This state has been more than %s hours. Please fix it." % \
+                event["msg"] = "This metric has been in bad state for more than %s hours - please, fix." % \
                                (remind_interval / 3600)
         current_state["event_timestamp"] = timestamp
         if value is not None:
@@ -198,18 +198,18 @@ class Trigger:
             state_maintenance = current_state.get("maintenance", 0)
             if self.maintenance >= timestamp:
                 current_state["suppressed"] = True
-                log.msg("Event %s suppressed due maintenance until %s." %
+                log.msg("Event %s suppressed due to maintenance until %s." %
                         (event, datetime.fromtimestamp(self.maintenance)))
             elif state_maintenance >= timestamp:
                 current_state["suppressed"] = True
-                log.msg("Event %s suppressed due metric %s maintenance until %s." %
+                log.msg("Event %s suppressed due to metric %s maintenance until %s." %
                         (event, metric, datetime.fromtimestamp(state_maintenance)))
             else:
                 log.msg("Writing new event: %s" % event)
                 yield self.db.pushEvent(event)
         else:
             current_state["suppressed"] = True
-            log.msg("Event %s suppressed due trigger schedule" % str(event))
+            log.msg("Event %s suppressed due to trigger schedule" % str(event))
 
     def isSchedAllows(self, ts):
         sched = self.struct.get('sched')
