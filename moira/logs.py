@@ -6,6 +6,17 @@ from twisted.python.logfile import DailyLogFile
 from moira import config
 
 
+class ZeroPaddingDailyLogFile(DailyLogFile):
+
+    def suffix(self, tupledate):
+        """Return the suffix given a (year, month, day) tuple or unixtime"""
+        try:
+            return ''.join(map(lambda x: ("0%d" % x) if x < 10 else str(x), tupledate))
+        except:
+            # try taking a float unixtime
+            return ''.join(map(str, self.toDate(tupledate)))
+
+
 def api():
     if config.LOG_DIRECTORY == "stdout":
         log.startLogging(sys.stdout)
@@ -31,4 +42,4 @@ def daily(name):
     path = os.path.abspath(config.LOG_DIRECTORY)
     if not os.path.exists(path):
         os.makedirs(path)
-    return DailyLogFile(name, path)
+    return ZeroPaddingDailyLogFile(name, path)
