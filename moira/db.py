@@ -111,11 +111,6 @@ def docstring_parameters(*sub):
 audit_log = None
 
 
-def extract(value):
-    parts = value.split()
-    return float(parts[1])
-
-
 def audit(f):
     """
     Write json object changes to audit.log
@@ -891,27 +886,9 @@ class Db(service.Service):
 
     @defer.inlineCallbacks
     @docstring_parameters(METRIC_PREFIX.format("<metric>"))
-    def getMetricValues(self, metric, startTime, endTime='+inf'):
-        """
-        getMetricValues(self, metric, startTime)
-
-        Read metric values from sorted set {0} from startTime
-
-        :param metric: graphite metric path
-        :type metric: string
-        :param startTime: unix epoch time
-        :type startTime: long
-        :rtype: list of tuple (float, long)
-        """
-        result = yield self.rc.zrangebyscore(METRIC_PREFIX.format(metric), min=startTime, max=endTime, withscores=True)
-
-        defer.returnValue([(extract(value), timestamp) for value, timestamp in result])
-
-    @defer.inlineCallbacks
-    @docstring_parameters(METRIC_PREFIX.format("<metric>"))
     def getMetricsValues(self, metrics, startTime, endTime='+inf'):
         """
-        getMetricsValues(self, metrics, startTime)
+        getMetricsValues(self, metrics, startTime, endTime)
 
         Read multiple metric values from sorted set {0} from startTime
 
@@ -919,14 +896,15 @@ class Db(service.Service):
         :type metrics: list of string
         :param startTime: unix epoch time
         :type startTime: long
-        :rtype: list of list of tuple (float, long)
+        :param endTime: unix epoch time
+        :type endTime: long
+        :rtype: list of list of tuple ('value timestamp', long)
         """
         pipeline = yield self.rc.pipeline()
         for metric in metrics:
             pipeline.zrangebyscore(METRIC_PREFIX.format(metric), min=startTime, max=endTime, withscores=True)
-
         results = yield pipeline.execute_pipeline()
-        defer.returnValue([[(extract(value), timestamp) for value, timestamp in result] for result in results])
+        defer.returnValue(results)
 
     @cache
     @defer.inlineCallbacks

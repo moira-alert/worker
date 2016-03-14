@@ -299,11 +299,11 @@ class DataTests(WorkerTests):
         yield self.db.sendMetric(metric, metric, self.now - 180, 10)
         yield self.db.sendMetric(metric, metric, self.now - 120, 20)
         yield self.db.sendMetric(metric, metric, self.now - 60, 30)
-        yield self.trigger.check(now=self.now)
+        yield self.trigger.check(now=self.now - 60)
         yield self.assert_trigger_metric('movingAverage(' + metric +
                                          ',3)', 20, state.WARN)
         yield self.db.sendMetric(metric, metric, self.now, 40)
-        yield self.trigger.check(now=self.now + 10)
+        yield self.trigger.check(now=self.now)
         yield self.assert_trigger_metric('movingAverage(' + metric +
                                          ',3)', 30, state.ERROR)
 
@@ -316,11 +316,11 @@ class DataTests(WorkerTests):
         yield self.db.sendMetric(metric, metric, self.now - 180, 10)
         yield self.db.sendMetric(metric, metric, self.now - 120, 20)
         yield self.db.sendMetric(metric, metric, self.now - 60, 30)
-        yield self.trigger.check(now=self.now)
+        yield self.trigger.check(now=self.now - 60)
         yield self.assert_trigger_metric('movingAverage(' + metric +
                                          ',3)', 10, state.OK)
         yield self.db.sendMetric(metric, metric, self.now, 40)
-        yield self.trigger.check(now=self.now + 10)
+        yield self.trigger.check(now=self.now)
         yield self.assert_trigger_metric('movingAverage(' + metric +
                                          ',3)', 20, state.WARN)
 
@@ -582,14 +582,16 @@ class DataTests(WorkerTests):
         yield self.db.sendMetric(metric, metric, self.now - 60, 1)
         yield self.trigger.check(now=self.now + 60, cache_ttl=0)
         yield self.assert_trigger_metric(metric, 1, state.OK)
-        values = yield self.db.getMetricValues(metric, self.now - 3600)
+        values = yield self.db.getMetricsValues([metric], self.now - 3600)
         self.assertEquals(len(values), 1)
+        self.assertEquals(len(values[0]), 2)
         yield self.deleteTrigger()
         yield self.db.sendMetric(metric, metric, self.now, 1)
         yield self.protocol.messageReceived(None, "moira-func-test", '{"pattern":"' + metric +
                                             '", "metric":"' + metric + '"}')
-        values = yield self.db.getMetricValues(metric, self.now - 3600)
-        self.assertEquals(len(values), 0)
+        values = yield self.db.getMetricsValues([metric], self.now - 3600)
+        self.assertEquals(len(values), 1)
+        self.assertEquals(len(values[0]), 0)
 
     @trigger('test-schedule')
     @inlineCallbacks
@@ -615,6 +617,29 @@ class DataTests(WorkerTests):
         self.assertTrue(self.trigger.isSchedAllows(day_begin + 3 * 3600))
         self.assertTrue(self.trigger.isSchedAllows(day_begin + 15 * 3600 - 1))
         self.assertFalse(self.trigger.isSchedAllows(day_begin + 15 * 3600))
+        
+    @trigger('test-sum-with-null')
+    @inlineCallbacks
+    def testSumWithNull(self):
+        yield self.sendTrigger('{"name": "test trigger", "targets": [" \
+                               sumSeries(metric.one, metric.two)"], "warn_value": 60, "error_value": 90}')
+
+        yield self.db.addPatternMetric("metric.two", "metric.two")
+        yield self.db.sendMetric("metric.one", "metric.one", self.now, 1)
+        yield self.trigger.check(now=self.now + 60, cache_ttl=0)
+        yield self.assert_trigger_metric("sumSeries(metric.one,metric.two)", 1, state.OK)
+
+    @trigger('test-sum-with-null2')
+    @inlineCallbacks
+    def testSumWithNull2(self):
+        yield self.sendTrigger('{"name": "test trigger", "targets": [" \
+                               sumSeries(metric.*)"], "warn_value": 60, "error_value": 90}')
+
+        yield self.db.addPatternMetric("metric.*", "metric.one")
+        yield self.db.addPatternMetric("metric.*", "metric.two")
+        yield self.db.sendMetric("metric.one", "metric.one", self.now, 1)
+        yield self.trigger.check(now=self.now + 60, cache_ttl=0)
+        yield self.assert_trigger_metric("sumSeries(metric.*)", 1, state.OK)
 
     @trigger('test-schedule2')
     @inlineCallbacks

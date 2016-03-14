@@ -98,6 +98,9 @@ class TimeSeries(list):
         }
 
 # Data retrieval API
+def extract(value):
+    parts = value.split()
+    return float(parts[1])
 
 
 @defer.inlineCallbacks
@@ -110,41 +113,32 @@ def fetchData(requestContext, pathExpr):
 
     startTime = int(epoch(requestContext['startTime']))
     endTime = int(epoch(requestContext['endTime']))
-
-    metrics = yield db.getPatternMetrics(pathExpr)
     seriesList = []
-    buckets = {}
-    max_bucket = None
-    data = yield db.getMetricsValues(metrics, startTime, ("" if requestContext.get('delta') is None else "(") + str(endTime))
-    for i, metric in enumerate(metrics):
-        requestContext['metrics'].add(metric)
-        buckets[metric] = {}
-        interval = yield db.getMetricRetention(metric, cache_key=metric, cache_ttl=60)
-        buckets[metric]['interval'] = interval
-        for value, timestamp in data[i]:
-            bucket = (int)((timestamp - startTime) / interval)
-            buckets[metric][bucket] = value
-            if max_bucket is None or bucket > max_bucket:
-                max_bucket = bucket
 
-    for metric in buckets:
-        values = []
-        interval = buckets[metric]['interval']
-        for bucket in range(0, -1 if max_bucket is None else max_bucket + 1):
-            values.append(buckets[metric].get(bucket))
-
-        series = TimeSeries(
-            metric,
-            startTime,
-            startTime + (max_bucket or 0) * interval,
-            interval,
-            values)
-
-        series.pathExpression = pathExpr
-        seriesList.append(series)
+    metrics = list((yield db.getPatternMetrics(pathExpr)))
 
     if len(metrics) == 0:
         series = TimeSeries(pathExpr, startTime, startTime, 60, [])
         series.pathExpression = pathExpr
         seriesList.append(series)
+    else:
+        first_metric = metrics[0]
+        retention = yield db.getMetricRetention(first_metric, cache_key=first_metric, cache_ttl=60)
+        data = yield db.getMetricsValues(metrics, startTime, ("" if requestContext.get('delta') is None else "(") + str(endTime))
+        for i, metric in enumerate(metrics):
+            points = {}
+            for value, timestamp in data[i]:
+                bucket = (int)((timestamp - startTime) / retention)
+                points[bucket] = extract(value)
+            values = map(lambda timestamp: points.get((int)((timestamp - startTime) / retention)),
+                         xrange(startTime, endTime + retention, retention))
+            series = TimeSeries(
+                metric,
+                startTime,
+                endTime,
+                retention,
+                values)
+            series.pathExpression = pathExpr
+            seriesList.append(series)
+
     defer.returnValue(seriesList)
