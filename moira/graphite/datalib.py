@@ -126,6 +126,7 @@ def fetchData(requestContext, pathExpr):
         retention = yield db.getMetricRetention(first_metric, cache_key=first_metric, cache_ttl=60)
         data = yield db.getMetricsValues(metrics, startTime, ("" if requestContext.get('delta') is None else "(") + str(endTime))
         for i, metric in enumerate(metrics):
+            requestContext['metrics'].add(metric)
             points = {}
             for value, timestamp in data[i]:
                 bucket = (int)((timestamp - startTime) / retention)

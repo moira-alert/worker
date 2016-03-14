@@ -584,7 +584,7 @@ class DataTests(WorkerTests):
         yield self.assert_trigger_metric(metric, 1, state.OK)
         values = yield self.db.getMetricsValues([metric], self.now - 3600)
         self.assertEquals(len(values), 1)
-        self.assertEquals(len(values[0]), 2)
+        self.assertEquals(len(values[0]), 1)
         yield self.deleteTrigger()
         yield self.db.sendMetric(metric, metric, self.now, 1)
         yield self.protocol.messageReceived(None, "moira-func-test", '{"pattern":"' + metric +
