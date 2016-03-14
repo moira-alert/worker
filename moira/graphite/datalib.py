@@ -130,8 +130,9 @@ def fetchData(requestContext, pathExpr):
             for value, timestamp in data[i]:
                 bucket = (int)((timestamp - startTime) / retention)
                 points[bucket] = extract(value)
-            values = map(lambda timestamp: points.get((int)((timestamp - startTime) / retention)),
-                         xrange(startTime, endTime + retention, retention))
+
+            values = [points.get((int)((timestamp - startTime) / retention)) for timestamp in xrange(startTime, endTime + retention, retention)]
+
             series = TimeSeries(
                 metric,
                 startTime,
