@@ -7,7 +7,7 @@ with open('requirements.txt') as f:
 
 setup(
     name = "moira",
-    version = "1.1.9",
+    version = "1.1.10",
     author = "SKB Kontur",
     author_email = "devops@skbkontur.ru",
     description = "Moira checker and api modules",

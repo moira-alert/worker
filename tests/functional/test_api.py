@@ -79,7 +79,7 @@ class ApiTests(WorkerTests):
 
     @trigger("good-trigger")
     @inlineCallbacks
-    def testTriggers(self):
+    def testSimpleTriggerPUT(self):
         response, body = yield self.request('PUT', 'trigger/{0}'.format(self.trigger.id),
                                             '{"name": "test trigger", "targets": ["sumSeries(*)"], \
                                              "warn_value": "1e-7", "error_value": 50, "tags": ["tag1", "tag2"] }',
@@ -94,7 +94,7 @@ class ApiTests(WorkerTests):
 
     @trigger("expression-trigger")
     @inlineCallbacks
-    def testTriggers(self):
+    def testExpressionTriggerPUT(self):
         response, body = yield self.request('PUT', 'trigger/{0}'.format(self.trigger.id),
                                             '{"name": "test trigger", "targets": ["sumSeries(*)"], \
                                              "tags": ["tag1", "tag2"], "expression": "ERROR if t1 > 1 else OK" }',
@@ -218,24 +218,34 @@ class ApiTests(WorkerTests):
 
     @trigger("test-metrics")
     @inlineCallbacks
-    def testMetrics(self):
-        metric = "devops.functest.m"
-        yield self.db.sendMetric(metric, metric, self.now - 60, 1)
-        yield self.db.sendMetric(metric, metric, self.now, 2)
+    def testMetricDeletion(self):
+        pattern = "devops.functest.*"
+        metric1 = "devops.functest.m1"
+        metric2 = "devops.functest.m2"
+        yield self.db.sendMetric(pattern, metric1, self.now - 60, 1)
+        yield self.db.sendMetric(pattern, metric1, self.now, 2)
+        yield self.db.sendMetric(pattern, metric2, self.now, 3)
         response, body = yield self.request('PUT', 'trigger/{0}'.format(self.trigger.id),
-                                            '{"name": "test trigger", "targets": ["' + metric + '"], \
+                                            '{"name": "test trigger", "targets": ["' + pattern + '"], \
                                              "warn_value": 5, "error_value": 10 }',
                                             )
         response, metrics = yield self.request('GET', 'trigger/{0}/metrics?from={1}&to={2}'
                                                .format(self.trigger.id, self.now - 60, self.now))
-        self.assertEqual([1, 2], [v['value'] for v in metrics[metric]])
-        metrics = yield self.db.getPatternMetrics(metric)
-        self.assertEqual([metric], list(metrics))
+        self.assertEqual(2, len(metrics))
+        self.assertEqual([1, 2], [v['value'] for v in metrics[metric1]])
+        metrics = yield self.db.getPatternMetrics(pattern)
+        self.assertTrue(metric1 in metrics)
+        self.assertTrue(metric2 in metrics)
         yield self.trigger.check()
+        check = yield self.db.getTriggerLastCheck(self.trigger.id)
+        self.assertEqual(2, len(check['metrics']))
         response, data = yield self.request('DELETE', 'trigger/{0}/metrics?name={1}'
-                                            .format(self.trigger.id, metric))
-        metrics = yield self.db.getPatternMetrics(metric)
-        self.assertEqual(len(metrics), 0)
+                                            .format(self.trigger.id, metric1))
+        metrics = yield self.db.getPatternMetrics(pattern)
+        self.assertFalse(metric1 in metrics)
+        self.assertTrue(metric2 in metrics)
+        check = yield self.db.getTriggerLastCheck(self.trigger.id)
+        self.assertEqual(1, len(check['metrics']))
 
     @trigger("test-trigger-maintenance")
     @inlineCallbacks

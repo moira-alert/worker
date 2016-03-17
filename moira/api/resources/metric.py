@@ -1,5 +1,5 @@
 from moira.api.request import delayed
-from twisted.internet import defer
+from twisted.internet import defer, reactor, task
 from moira.api.resources.redis import RedisResouce
 from moira.graphite.evaluator import evaluateTarget
 from moira.graphite.datalib import createRequestContext
@@ -34,11 +34,6 @@ class Metrics(RedisResouce):
     @defer.inlineCallbacks
     def render_DELETE(self, request):
         metric = request.args.get('name')[0]
-        last_check = yield self.db.getTriggerLastCheck(self.trigger_id)
-
-        if last_check is None:
-            defer.returnValue(bad_request(request, "Trigger check not found"))
-            raise StopIteration
 
         json, trigger = yield self.db.getTrigger(self.trigger_id)
 
@@ -46,10 +41,28 @@ class Metrics(RedisResouce):
             defer.returnValue(bad_request(request, "Trigger not found"))
             raise StopIteration
 
-        metrics = last_check.get('metrics')
-        if metrics and metric in metrics:
+        accuired = yield self.db.setTriggerCheckLock(self.trigger_id)
+        count = 0
+        while accuired is None and count < 10:
+            count += 1
+            yield task.deferLater(reactor, 0.5, lambda: None)
+            accuired = yield self.db.setTriggerCheckLock(self.trigger_id)
+        if accuired is None:
+            raise Exception("Can not accuire trigger lock")
+
+        last_check = yield self.db.getTriggerLastCheck(self.trigger_id)
+
+        if last_check is None:
+            defer.returnValue(bad_request(request, "Trigger check not found"))
+            raise StopIteration
+
+        metrics = last_check.get('metrics', {})
+        if metric in metrics:
             del last_check['metrics'][metric]
             for pattern in trigger.get("patterns"):
-                yield self.db.delPatternMetrics(pattern, request=request)
+                yield self.db.removePatternMetric(pattern, metric, request=request)
+
         yield self.db.setTriggerLastCheck(self.trigger_id, last_check)
+        yield self.db.delTriggerCheckLock(self.trigger_id)
+
         request.finish()
