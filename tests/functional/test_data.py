@@ -540,6 +540,27 @@ class DataTests(WorkerTests):
         self.assertEquals(len(events), 1)
         self.assertEquals(events[0]["state"], state.NODATA)
 
+    @trigger('test-error-noremind')
+    @inlineCallbacks
+    def testErrorNoRemind(self):
+        metric = 'MoiraFuncTest.metric.one'
+        yield self.sendTrigger('{"name": "test trigger", "targets": ["' +
+                               metric + '"], "warn_value": 60, "error_value": 90, "ttl":600, "ttl_state": "OK" }')
+        yield self.db.sendMetric(metric, metric, self.now, 0)
+        yield self.trigger.check()
+        yield self.assert_trigger_metric(metric, 0, state.OK)
+        yield self.trigger.check(now=self.now + 660)
+        yield self.trigger.check(now=self.now + 660)
+        yield self.assert_trigger_metric(metric, None, state.OK)
+        yield self.trigger.check(now=self.now + 88460)
+        yield self.trigger.check(now=self.now + 88460)
+        yield self.db.sendMetric(metric, metric, self.now + 88520, 100)
+        yield self.db.sendMetric(metric, metric, self.now + 88580, 100)
+        yield self.trigger.check(now=self.now + 88580)
+        events = yield self.db.getEvents()
+        self.assertEquals(len(events), 2)
+        self.assertEquals(events[0]["state"], state.ERROR)
+
     @trigger('test-nodata-deletion')
     @inlineCallbacks
     def testNodataDeletion(self):

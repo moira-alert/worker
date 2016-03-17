@@ -191,6 +191,7 @@ class Trigger:
                 event["msg"] = "This metric has been in bad state for more than %s hours - please, fix." % \
                                (remind_interval / 3600)
         current_state["event_timestamp"] = timestamp
+        last_state["event_timestamp"] = timestamp
         if value is not None:
             event["value"] = value
         current_state["suppressed"] = False
