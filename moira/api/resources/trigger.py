@@ -102,16 +102,7 @@ class Triggers(RedisResouce):
     @delayed
     @defer.inlineCallbacks
     def render_GET(self, request):
-        triggers_ids = yield self.db.getTriggers()
-        triggers = []
-        for trigger_id in triggers_ids:
-            _, trigger = yield self.db.getTrigger(trigger_id)
-            check = yield self.db.getTriggerLastCheck(trigger_id)
-            throttling = yield self.db.getTriggerThrottling(trigger_id)
-            trigger["last_check"] = check
-            trigger["throttling"] = throttling
-            triggers.append(trigger)
-        result = {"list": triggers}
+        result = yield self.db.getTriggersChecks()
         self.write_json(request, result)
 
     @delayed

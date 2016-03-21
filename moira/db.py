@@ -513,6 +513,34 @@ class Db(service.Service):
         defer.returnValue((json, trigger))
 
     @defer.inlineCallbacks
+    def getTriggersChecks(self):
+        """
+        getTriggersChecks(self)
+
+        - Returns all triggers with it check
+
+        :rtype: json
+        """
+        triggers_ids = yield self.getTriggers()
+        triggers = []
+        pipeline = self.rc.pipeline()
+        for trigger_id in triggers_ids:
+            pipeline.get(TRIGGER_PREFIX.format(trigger_id))
+            pipeline.smembers(TRIGGER_TAGS_PREFIX.format(trigger_id))
+            pipeline.get(LAST_CHECK_PREFIX.format(trigger_id))
+            pipeline.get(TRIGGER_NEXT_PREFIX.format(trigger_id))
+        results = yield pipeline.execute_pipeline()
+        for trigger_json, trigger_tags, last_check, throttling in [results[i:i + 4] for i in range(0, len(results), 4)]:
+            if trigger_json is None:
+                continue
+            trigger = anyjson.deserialize(trigger_json)
+            trigger = trigger_reformat(trigger, trigger_id, trigger_tags)
+            trigger["last_check"] = None if last_check is None else anyjson.deserialize(last_check)
+            trigger["throttling"] = long(throttling) if throttling and time.time() < long(throttling) else 0
+            triggers.append(trigger)
+        defer.returnValue({"list": triggers})
+
+    @defer.inlineCallbacks
     @docstring_parameters(TRIGGER_NEXT_PREFIX.format("<trigger_id>"))
     def getTriggerThrottling(self, trigger_id):
         """
@@ -755,7 +783,7 @@ class Db(service.Service):
         :rtype: json dict
         """
         json = yield self.rc.get(LAST_CHECK_PREFIX.format(trigger_id))
-        result = anyjson.deserialize(json) if json is not None else None
+        result = None if json is None else anyjson.deserialize(json)
         defer.returnValue(result)
 
     @defer.inlineCallbacks
