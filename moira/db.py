@@ -502,7 +502,7 @@ class Db(service.Service):
         :type trigger_id: string
         :rtype: tuple(json, trigger)
         """
-        pipeline = self.rc.pipeline()
+        pipeline = yield self.rc.pipeline()
         pipeline.get(TRIGGER_PREFIX.format(trigger_id))
         pipeline.smembers(TRIGGER_TAGS_PREFIX.format(trigger_id))
         trigger = {}
@@ -523,7 +523,7 @@ class Db(service.Service):
         """
         triggers_ids = yield self.getTriggers()
         triggers = []
-        pipeline = self.rc.pipeline()
+        pipeline = yield self.rc.pipeline()
         for trigger_id in triggers_ids:
             pipeline.get(TRIGGER_PREFIX.format(trigger_id))
             pipeline.smembers(TRIGGER_TAGS_PREFIX.format(trigger_id))
