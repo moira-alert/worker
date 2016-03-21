@@ -24,7 +24,7 @@ class RedisResouce(Resource):
     @check_trigger
     @defer.inlineCallbacks
     def save_trigger(self, request, trigger_id, message):
-        _, existing = yield self.db.getTrigger(trigger_id, tags=True)
+        _, existing = yield self.db.getTrigger(trigger_id)
         yield self.db.saveTrigger(trigger_id, request.body_json,
                                   request=request, existing=existing)
         self.write_json(request, {

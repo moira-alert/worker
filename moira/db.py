@@ -489,9 +489,9 @@ class Db(service.Service):
     @cache
     @defer.inlineCallbacks
     @docstring_parameters(TRIGGER_PREFIX.format("<trigger_id>"))
-    def getTrigger(self, trigger_id, tags=False):
+    def getTrigger(self, trigger_id):
         """
-        getTrigger(self, trigger_id, tags = True)
+        getTrigger(self, trigger_id)
 
         - Read trigger by key {0}
         - Unpack trigger json
@@ -502,13 +502,13 @@ class Db(service.Service):
         :type trigger_id: string
         :rtype: tuple(json, trigger)
         """
-        json = yield self.rc.get(TRIGGER_PREFIX.format(trigger_id))
+        pipeline = self.rc.pipeline()
+        pipeline.get(TRIGGER_PREFIX.format(trigger_id))
+        pipeline.smembers(TRIGGER_TAGS_PREFIX.format(trigger_id))
         trigger = {}
-        trigger_tags = []
+        json, trigger_tags = yield pipeline.execute_pipeline()
         if json is not None:
             trigger = anyjson.deserialize(json)
-            if tags:
-                trigger_tags = yield self.rc.smembers(TRIGGER_TAGS_PREFIX.format(trigger_id))
             trigger = trigger_reformat(trigger, trigger_id, trigger_tags)
         defer.returnValue((json, trigger))
 

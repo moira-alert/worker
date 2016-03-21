@@ -36,7 +36,7 @@ class Trigger:
     @defer.inlineCallbacks
     def init(self, now, fromTime=None):
         self.maintenance = 0
-        json, self.struct = yield self.db.getTrigger(self.id, tags=True)
+        json, self.struct = yield self.db.getTrigger(self.id)
         if json is None:
             defer.returnValue(False)
         for tag in self.struct["tags"]:

@@ -72,7 +72,7 @@ class Trigger(RedisResouce):
     @delayed
     @defer.inlineCallbacks
     def render_GET(self, request):
-        json, trigger = yield self.db.getTrigger(self.trigger_id, tags=True)
+        json, trigger = yield self.db.getTrigger(self.trigger_id)
         if json is None:
             request.setResponseCode(http.NOT_FOUND)
             request.finish()
@@ -84,7 +84,7 @@ class Trigger(RedisResouce):
     @delayed
     @defer.inlineCallbacks
     def render_DELETE(self, request):
-        _, existing = yield self.db.getTrigger(self.trigger_id, tags=True)
+        _, existing = yield self.db.getTrigger(self.trigger_id)
         yield self.db.removeTrigger(self.trigger_id, request=request, existing=existing)
         request.finish()
 
@@ -105,7 +105,7 @@ class Triggers(RedisResouce):
         triggers_ids = yield self.db.getTriggers()
         triggers = []
         for trigger_id in triggers_ids:
-            _, trigger = yield self.db.getTrigger(trigger_id, tags=True)
+            _, trigger = yield self.db.getTrigger(trigger_id)
             check = yield self.db.getTriggerLastCheck(trigger_id)
             throttling = yield self.db.getTriggerThrottling(trigger_id)
             trigger["last_check"] = check
