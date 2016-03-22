@@ -521,7 +521,7 @@ class Db(service.Service):
 
         :rtype: json
         """
-        triggers_ids = yield self.getTriggers()
+        triggers_ids = list((yield self.getTriggers()))
         triggers = []
         pipeline = yield self.rc.pipeline()
         for trigger_id in triggers_ids:
@@ -530,7 +530,7 @@ class Db(service.Service):
             pipeline.get(LAST_CHECK_PREFIX.format(trigger_id))
             pipeline.get(TRIGGER_NEXT_PREFIX.format(trigger_id))
         results = yield pipeline.execute_pipeline()
-        for trigger_json, trigger_tags, last_check, throttling in [results[i:i + 4] for i in range(0, len(results), 4)]:
+        for trigger_id, trigger_json, trigger_tags, last_check, throttling in [[triggers_ids[i]] + results[i:i + 4] for i in range(0, len(results), 4)]:
             if trigger_json is None:
                 continue
             trigger = anyjson.deserialize(trigger_json)
