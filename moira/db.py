@@ -530,7 +530,8 @@ class Db(service.Service):
             pipeline.get(LAST_CHECK_PREFIX.format(trigger_id))
             pipeline.get(TRIGGER_NEXT_PREFIX.format(trigger_id))
         results = yield pipeline.execute_pipeline()
-        for trigger_id, trigger_json, trigger_tags, last_check, throttling in [[triggers_ids[i]] + results[i:i + 4] for i in range(0, len(results), 4)]:
+        slices = [[triggers_ids[i/4]] + results[i:i + 4] for i in range(0, len(results), 4)]
+        for trigger_id, trigger_json, trigger_tags, last_check, throttling in slices:
             if trigger_json is None:
                 continue
             trigger = anyjson.deserialize(trigger_json)
