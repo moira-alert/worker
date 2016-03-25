@@ -662,6 +662,20 @@ class DataTests(WorkerTests):
         yield self.trigger.check(now=self.now + 60, cache_ttl=0)
         yield self.assert_trigger_metric("sumSeries(metric.*)", 1, state.OK)
 
+    @trigger('test-var-metrics')
+    @inlineCallbacks
+    def testVariableMetrics(self):
+        yield self.db.addPatternMetric("metric.*", "metric.one")
+        yield self.db.addPatternMetric("metric.*", "metric.two")
+        yield self.sendTrigger('{"name": "test trigger", "targets": [" \
+                               maximumAbove(metric.*, 0)"], "warn_value": 60, "error_value": 90}')
+        yield self.db.sendMetric("metric.one", "metric.one", self.now, 1)
+        yield self.trigger.check(now=self.now, cache_ttl=0)
+        yield self.db.cleanupMetricValues("metric.one", self.now + 3600)
+        yield self.db.sendMetric("metric.two", "metric.two", self.now + 60, 1)
+        yield self.trigger.check(now=self.now + 60, cache_ttl=0)
+        yield self.assert_trigger_metric("metric.one", 1, state.OK)
+
     @trigger('test-schedule2')
     @inlineCallbacks
     def testTriggerSchedule2(self):
