@@ -13,6 +13,7 @@ class TargetTimeSeries(dict):
 
     def __init__(self, *arg, **kwargs):
         super(TargetTimeSeries, self).__init__(*arg, **kwargs)
+        self.other_targets_names = {}
 
     def get_expression_values(self, t1, timestamp):
         expression_values = {}
@@ -25,6 +26,25 @@ class TargetTimeSeries(dict):
             if tN_value is None:
                 break
         return expression_values
+
+    def set_state_value(self, metric_state, expression_values, tN):
+        if expression_values is None:
+            if "value" in metric_state:
+                del metric_state["value"]
+        else:
+            metric_state["value"] = expression_values[tN]
+
+    def update_state(self, t1, check, expression_state, expression_values, timestamp):
+        metric_state = check["metrics"][t1.name]
+        metric_state["state"] = expression_state
+        metric_state["timestamp"] = timestamp
+        self.set_state_value(metric_state, expression_values, "t1")
+
+        for tN, tName in self.other_targets_names.iteritems():
+            other_metric_state = check["metrics"][tName]
+            other_metric_state["state"] = expression_state
+            other_metric_state["timestamp"] = timestamp
+            self.set_state_value(other_metric_state, expression_values, tN)
 
 
 class Trigger:
@@ -67,6 +87,7 @@ class Trigger:
                     raise Exception("Target #%s has more than one timeseries" % target_number)
                 if len(time_series) == 0:
                     raise Exception("Target #%s has no timeseries" % target_number)
+                target_time_series.other_targets_names["t%s" % target_number] = time_series[0].name
 
             for time_serie in time_series:
                 time_serie.last_state = self.last_check["metrics"].get(
@@ -108,9 +129,13 @@ class Trigger:
                     yield self.compare_state(check, self.last_check, now)
             else:
 
+                for t_series in time_series.values():
+                    for tN in t_series:
+                        check["metrics"][tN.name] = tN.last_state.copy()
+
                 for t1 in time_series[1]:
 
-                    check["metrics"][t1.name] = metric_state = t1.last_state.copy()
+                    metric_state = check["metrics"][t1.name]
 
                     for value_timestamp in xrange(t1.start, now + t1.step, t1.step):
 
@@ -128,10 +153,11 @@ class Trigger:
                                                   'error_value': self.struct.get('error_value'),
                                                   'PREV_STATE': metric_state['state']})
 
-                        metric_state["state"] = expression.getExpression(self.struct.get('expression'),
-                                                                         **expression_values)
-                        metric_state["value"] = t1_value
-                        metric_state["timestamp"] = value_timestamp
+                        expression_state = expression.getExpression(self.struct.get('expression'),
+                                                                    **expression_values)
+
+                        time_series.update_state(t1, check, expression_state, expression_values, value_timestamp)
+
                         yield self.compare_state(metric_state, t1.last_state,
                                                  value_timestamp, value=t1_value,
                                                  metric=t1.name)
@@ -142,13 +168,14 @@ class Trigger:
                         if self.ttl_state == state.DEL and metric_state.get("event_timestamp") is not None:
                             log.msg("Remove metric %s" % t1.name)
                             del check["metrics"][t1.name]
+                            for tN, tName in time_series.other_targets_names.iteritems():
+                                log.msg("Remove metric %s" % tName)
+                                del check["metrics"][tName]
                             for pattern in self.struct.get("patterns"):
                                 yield self.db.delPatternMetrics(pattern)
                             continue
-                        metric_state["state"] = state.toMetricState(self.ttl_state)
-                        metric_state["timestamp"] = self.last_check["timestamp"] - self.ttl
-                        if "value" in metric_state:
-                            del metric_state["value"]
+                        time_series.update_state(t1, check, state.toMetricState(self.ttl_state), None,
+                                                 self.last_check["timestamp"] - self.ttl)
                         yield self.compare_state(metric_state, t1.last_state, metric_state["timestamp"], metric=t1.name)
 
         except StopIteration:

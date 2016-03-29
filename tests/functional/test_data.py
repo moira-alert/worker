@@ -123,10 +123,12 @@ class DataTests(WorkerTests):
         yield self.db.sendMetric(metric2, metric2, self.now - 60, 2)
         yield self.trigger.check()
         yield self.assert_trigger_metric(metric1, 1, state.OK)
+        yield self.assert_trigger_metric(metric2, 2, state.OK)
         yield self.db.sendMetric(metric1, metric1, self.now, 2)
         yield self.db.sendMetric(metric2, metric2, self.now, 1)
         yield self.trigger.check()
         yield self.assert_trigger_metric(metric1, 2, state.ERROR)
+        yield self.assert_trigger_metric(metric2, 1, state.ERROR)
 
     @trigger('test-trigger-expression-prev-state')
     @inlineCallbacks
