@@ -887,22 +887,6 @@ class Db(service.Service):
     @audit
     @defer.inlineCallbacks
     @docstring_parameters(PATTERN_METRICS_PREFIX.format("<pattern>"))
-    def removePatternMetric(self, pattern, metric, existing=None):
-        """
-        removePatternMetric(self, pattern, metric)
-
-        Remove metric from set {0}
-
-        :param pattern: pattern of graphite that match multiple metric
-        :type pattern: string
-        :param metric: metric of graphite
-        :type metric: string
-        """
-        yield self.rc.srem(PATTERN_METRICS_PREFIX.format(pattern), metric)
-
-    @audit
-    @defer.inlineCallbacks
-    @docstring_parameters(PATTERN_METRICS_PREFIX.format("<pattern>"))
     def delPatternMetrics(self, pattern, existing=None):
         """
         delPatternMetrics(self, pattern)

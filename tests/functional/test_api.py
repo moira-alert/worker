@@ -243,7 +243,7 @@ class ApiTests(WorkerTests):
                                             .format(self.trigger.id, metric1))
         metrics = yield self.db.getPatternMetrics(pattern)
         self.assertFalse(metric1 in metrics)
-        self.assertTrue(metric2 in metrics)
+        self.assertFalse(metric2 in metrics)
         check = yield self.db.getTriggerLastCheck(self.trigger.id)
         self.assertEqual(1, len(check['metrics']))
 

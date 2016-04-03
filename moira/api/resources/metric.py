@@ -59,8 +59,9 @@ class Metrics(RedisResouce):
         metrics = last_check.get('metrics', {})
         if metric in metrics:
             del last_check['metrics'][metric]
-            for pattern in trigger.get("patterns"):
-                yield self.db.removePatternMetric(pattern, metric, request=request)
+
+        for pattern in trigger.get("patterns"):
+            yield self.db.delPatternMetrics(pattern)
 
         yield self.db.setTriggerLastCheck(self.trigger_id, last_check)
         yield self.db.delTriggerCheckLock(self.trigger_id)
