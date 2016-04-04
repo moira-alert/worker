@@ -8,5 +8,6 @@
         "dist": true,
         "*.egg-info": true,
         "**/*.pyc": true
-    }
+    },
+    "python.linting.flake8Enabled": true
 }
