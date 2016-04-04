@@ -266,6 +266,28 @@ class ApiTests(WorkerTests):
         events = yield self.db.getEvents()
         self.assertEqual(1, len(events))
 
+    @trigger("test-trigger-maintenance2")
+    @inlineCallbacks
+    def testTriggerMaintenance2(self):
+        metric = "devops.functest.m"
+        yield self.db.sendMetric(metric, metric, self.now - 60, 1)
+        response, body = yield self.request('PUT', 'trigger/{0}'.format(self.trigger.id),
+                                            '{"name": "test trigger", "targets": ["' + metric + '"], \
+                                             "warn_value": 1, "error_value": 2, "tags":["tag1"] }',
+                                            )
+        response, _ = yield self.request('PUT', 'tag/tag1/data', anyjson.dumps({"maintenance": self.now}))
+        yield self.trigger.check(now=self.now - 1)
+        events = yield self.db.getEvents()
+        self.assertEqual(0, len(events))
+        response, _ = yield self.request('PUT', 'tag/tag1/data', anyjson.dumps({}))
+        yield self.db.sendMetric(metric, metric, self.now, 0)
+        yield self.db.sendMetric(metric, metric, self.now + 60, 1)
+        yield self.db.sendMetric(metric, metric, self.now + 120, 1)
+        yield self.trigger.check(now=self.now + 120)
+        yield self.assert_trigger_metric(metric, 1, state.WARN)
+        events = yield self.db.getEvents()
+        self.assertEqual(2, len(events))
+
     @trigger("test-metric-maintenance")
     @inlineCallbacks
     def testMetricMaintenance(self):

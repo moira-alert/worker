@@ -222,6 +222,7 @@ class Trigger:
         if value is not None:
             event["value"] = value
         current_state["suppressed"] = False
+        last_state["suppressed"] = False
         if self.isSchedAllows(timestamp):
             state_maintenance = current_state.get("maintenance", 0)
             if self.maintenance >= timestamp:

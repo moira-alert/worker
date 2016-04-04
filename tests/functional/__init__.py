@@ -127,3 +127,14 @@ class WorkerTests(unittest.TestCase):
     def tearDown(self):
         yield self.db.stopService()
         yield self.port.stopListening()
+
+    @inlineCallbacks
+    def assert_trigger_metric(self, metric, value, state):
+        check = yield self.db.getTriggerLastCheck(self.trigger.id)
+        log.msg("Received check: %s" % check)
+        self.assertIsNot(check, None)
+        metric = [m for m in check["metrics"].itervalues()][0] \
+            if isinstance(metric, int) \
+            else check["metrics"].get(metric, {})
+        self.assertEquals(value, metric.get("value"))
+        self.assertEquals(state, metric.get("state"))

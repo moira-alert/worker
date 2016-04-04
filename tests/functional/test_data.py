@@ -700,14 +700,3 @@ class DataTests(WorkerTests):
         day_begin = self.now - self.now % (3600 * 24)
         for h in range(0, 24):
             self.assertTrue(self.trigger.isSchedAllows(day_begin + 3600 * h))
-
-    @inlineCallbacks
-    def assert_trigger_metric(self, metric, value, state):
-        check = yield self.db.getTriggerLastCheck(self.trigger.id)
-        log.msg("Received check: %s" % check)
-        self.assertIsNot(check, None)
-        metric = [m for m in check["metrics"].itervalues()][0] \
-            if isinstance(metric, int) \
-            else check["metrics"].get(metric, {})
-        self.assertEquals(value, metric.get("value"))
-        self.assertEquals(state, metric.get("state"))
