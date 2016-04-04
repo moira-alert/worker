@@ -5,7 +5,7 @@ sys.path.insert(0,
                     os.path.join(
                         os.path.abspath(
                             os.path.dirname(__file__)),
-                        '../../')))
+                        '.')))
 from fakeredis import FakeStrictRedis, FakePipeline
 from StringIO import StringIO
 from twisted.trial import unittest

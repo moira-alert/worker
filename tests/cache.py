@@ -5,7 +5,7 @@ sys.path.insert(0,
                     os.path.join(
                         os.path.abspath(
                             os.path.dirname(__file__)),
-                        '../')))
+                        '.')))
 from twisted.trial import unittest
 from moira.cache import cache
 from twisted.internet.defer import inlineCallbacks
