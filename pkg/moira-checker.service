@@ -1,0 +1,11 @@
+[Unit]
+Description=moira-checker - graphite metric checker service based on twisted python framework
+
+[Service]
+ExecStart=/usr/bin/moira-checker -c /etc/moira/worker.yml -l /var/log/moira/worker
+User=moira
+Group=moira
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,19 @@
+redis:
+  host: localhost
+  port: 6379
+
+worker:
+  log_dir: /var/log/moira/worker
+
+api:
+  port: 8081
+  listen: '127.0.0.1'
+
+graphite:
+  uri: localhost:2003
+  prefix: DevOps.moira
+  interval: 60
+
+checker:
+  nodata_check_interval: 60
+  check_interval: 10

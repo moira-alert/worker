@@ -8,3 +8,4 @@ log
 dist
 build
 *.egg-info
+version.txt
