@@ -565,7 +565,7 @@ class Db(service.Service):
         yield self.rc.zadd(NOTIFIER_NOTIFICATIONS, timestamp, anyjson.dumps({'event': event}))
 
     @defer.inlineCallbacks
-    @docstring_parameters(TRIGGER_THROTTLING_BEGINNING_PREFIX.format("<trigger_id>"))
+    @docstring_parameters(NOTIFIER_NOTIFICATIONS)
     def deleteTriggerThrottling(self, trigger_id):
         """
         deleteTriggerThrottling(self, trigger_id)
@@ -586,6 +586,41 @@ class Db(service.Service):
             if notification.get('event', {}).get('trigger_id') == trigger_id:
                 t.zadd(NOTIFIER_NOTIFICATIONS, now, json)
         yield t.commit()
+
+    @defer.inlineCallbacks
+    @docstring_parameters(NOTIFIER_NOTIFICATIONS)
+    def getNotifications(self, start, end):
+        """
+        getNotifications(self, start, end)
+
+        Read all planning notifications from sorted set {0}
+
+        :param start: range start
+        :type start: integer
+        :param end: range end
+        :type end: integer
+        """
+
+        pipeline = yield self.rc.pipeline()
+        pipeline.zrange(NOTIFIER_NOTIFICATIONS, start=start, end=end)
+        pipeline.zcard(NOTIFIER_NOTIFICATIONS)
+        jsons, total = yield pipeline.execute_pipeline()
+        defer.returnValue((jsons, total))
+
+    @defer.inlineCallbacks
+    @docstring_parameters(NOTIFIER_NOTIFICATIONS)
+    def removeNotification(self, json):
+        """
+        removeNotification(self, json)
+
+        Remove planning notification by given json from sorted set {0}
+
+        :param json: notification json
+        :type json: string
+        """
+
+        result = yield self.rc.zrem(NOTIFIER_NOTIFICATIONS, json)
+        defer.returnValue(result)
 
     @defer.inlineCallbacks
     @docstring_parameters(TAG_TRIGGERS_PREFIX.format("<tag>"))

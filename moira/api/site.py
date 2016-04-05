@@ -8,6 +8,7 @@ from moira.api.resources.event import Events
 from moira.api.resources.contact import Contacts
 from moira.api.resources.subscription import Subscriptions
 from moira.api.resources.user import Login
+from moira.api.resources.notification import Notifications
 from moira import config
 
 
@@ -44,6 +45,7 @@ class Site(server.Site):
         prefix.putChild("contact", Contacts(db))
         prefix.putChild("subscription", Subscriptions(db))
         prefix.putChild("user", Login(db))
+        prefix.putChild("notification", Notifications(db))
         server.Site.__init__(self, root)
 
     def _escape(self, s):
