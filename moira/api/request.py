@@ -23,7 +23,7 @@ def check_json(f):
         try:
             request.body = request.content.getvalue()
             request.body_json = anyjson.deserialize(request.body)
-        except:
+        except Exception:
             log.err()
             defer.returnValue(bad_request(request, "Content is not json"))
         yield f(*args, **kwargs)
@@ -62,19 +62,19 @@ def check_trigger(f):
                 defer.returnValue(bad_request(request, "%s is required" % field))
         try:
             request.body_json = trigger_reformat(json, json.get("id"), json.get("tags", []))
-        except:
+        except Exception:
             log.err()
             defer.returnValue(bad_request(request, "Invalid trigger format"))
         expression_values = {'warn_value': json.get('warn_value'),
                              'error_value': json.get('error_value')}
         try:
             yield resolve_patterns(request, expression_values)
-        except:
+        except Exception:
             log.err()
             defer.returnValue(bad_request(request, "Invalid graphite target"))
         try:
             getExpression(json.get("expression"), **expression_values)
-        except:
+        except Exception:
             log.err()
             defer.returnValue(bad_request(request, "Invalid expression"))
         yield f(*args, **kwargs)
@@ -87,7 +87,7 @@ def delayed(f):
         def wrapper():
             try:
                 yield f(resource, request)
-            except:
+            except Exception:
                 log.err()
                 request.setResponseCode(http.INTERNAL_SERVER_ERROR)
                 request.finish()

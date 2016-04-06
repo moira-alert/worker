@@ -180,7 +180,7 @@ class Trigger:
 
         except StopIteration:
             raise
-        except:
+        except Exception:
             log.err()
             check["state"] = state.EXCEPTION
             check["msg"] = "Trigger evaluation exception"

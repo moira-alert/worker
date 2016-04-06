@@ -12,7 +12,7 @@ class ZeroPaddingDailyLogFile(DailyLogFile):
         """Return the suffix given a (year, month, day) tuple or unixtime"""
         try:
             return ''.join(map(lambda x: ("0%d" % x) if x < 10 else str(x), tupledate))
-        except:
+        except Exception:
             # try taking a float unixtime
             return ''.join(map(str, self.toDate(tupledate)))
 

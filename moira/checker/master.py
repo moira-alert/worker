@@ -31,7 +31,7 @@ class MasterProtocol(redis.SubscriberProtocol):
                     yield db.addTriggerCheck(trigger_id)
                 else:
                     yield db.addTriggerCheck(trigger_id, cache_key=trigger_id, cache_ttl=config.CHECK_INTERVAL)
-        except:
+        except Exception:
             log.err()
 
 
@@ -68,7 +68,7 @@ class MasterService(service.Service):
                 triggers = yield self.db.getTriggers()
                 for trigger_id in triggers:
                     yield self.db.addTriggerCheck(trigger_id, cache_key=trigger_id, cache_ttl=60)
-        except:
+        except Exception:
             log.err()
 
     @defer.inlineCallbacks

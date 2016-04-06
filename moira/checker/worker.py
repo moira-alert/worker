@@ -45,7 +45,7 @@ class TriggersCheck:
             yield task.deferLater(reactor, random.uniform(PERFORM_INTERVAL * 10, PERFORM_INTERVAL * 20), lambda: None)
         except GeneratorExit:
             pass
-        except:
+        except Exception:
             spy.TRIGGER_CHECK_ERRORS.report(0)
             log.err()
             yield task.deferLater(reactor, ERROR_TIMEOUT, lambda: None)
