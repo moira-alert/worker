@@ -122,7 +122,7 @@ class Trigger:
                 yield self.db.cleanupMetricValues(metric, now - config.METRICS_TTL,
                                                   cache_key=metric, cache_ttl=cache_ttl)
 
-            if len(time_series) == 0:
+            if not time_series:
                 if self.ttl:
                     check["state"] = self.ttl_state
                     check["msg"] = "Trigger has no metrics"

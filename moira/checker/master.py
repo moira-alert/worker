@@ -19,7 +19,7 @@ class MasterProtocol(redis.SubscriberProtocol):
             metric = json["metric"]
             yield db.addPatternMetric(pattern, metric)
             triggers = yield db.getPatternTriggers(pattern)
-            if len(triggers) == 0:
+            if not triggers:
                 yield db.removePattern(pattern)
                 metrics = yield db.getPatternMetrics(pattern)
                 for metric in metrics:

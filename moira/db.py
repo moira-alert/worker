@@ -408,7 +408,7 @@ class Db(service.Service):
             - Update trigger patterns set {3}
 
         :param trigger: trigger json object
-        :type trigger: object
+        :type trigger: dict
         :param trigger_id: trigger identity
         :type trigger_id: string
         """
@@ -441,7 +441,7 @@ class Db(service.Service):
         yield t.commit()
         for pattern in cleanup_patterns:
             triggers = yield self.getPatternTriggers(pattern)
-            if len(triggers) == 0:
+            if not triggers:
                 yield self.removePatternTriggers(pattern)
                 yield self.removePattern(pattern)
                 yield self.delPatternMetrics(pattern)

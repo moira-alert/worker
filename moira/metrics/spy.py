@@ -15,7 +15,7 @@ class Spy:
         self.eventList = []
 
     def trimEventList(self, timestamp):
-        while len(self.eventList) > 0:
+        while self.eventList:
             first_event = self.eventList[0]
             time_delta = timestamp - first_event['timestamp']
             if get_total_seconds(time_delta) > 60:
@@ -26,7 +26,7 @@ class Spy:
     def report(self, size):
         now = datetime.now()
         self.trimEventList(now)
-        if len(self.eventList) > 0:
+        if self.eventList:
             last_batch = self.eventList[-1]
             time_delta = now - last_batch['timestamp']
             if get_total_seconds(time_delta) < 10:

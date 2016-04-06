@@ -53,7 +53,7 @@ class Tag(RedisResouce):
     @defer.inlineCallbacks
     def render_DELETE(self, request):
         triggers = yield self.db.getTagTriggers(self.tag)
-        if len(triggers) > 0:
+        if triggers:
             request.setResponseCode(http.BAD_REQUEST)
             request.write(
                 "This tag is assigned to %s triggers. Remove tag from triggers first" %
