@@ -83,11 +83,12 @@ class Trigger:
             time_series = yield evaluateTarget(requestContext, target)
 
             if target_number > 1:
-                if len(time_series) > 1:
-                    raise Exception("Target #%s has more than one timeseries" % target_number)
-                if len(time_series) == 0:
+                if len(time_series) == 1:
+                    target_time_series.other_targets_names["t%s" % target_number] = time_series[0].name
+                elif not time_series:
                     raise Exception("Target #%s has no timeseries" % target_number)
-                target_time_series.other_targets_names["t%s" % target_number] = time_series[0].name
+                else:
+                    raise Exception("Target #%s has more than one timeseries" % target_number)
 
             for time_serie in time_series:
                 time_serie.last_state = self.last_check["metrics"].get(
