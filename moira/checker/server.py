@@ -49,17 +49,17 @@ def run():
     config.read()
     logs.checker_master()
 
-    topService = TopService()
+    top_service = TopService()
 
     db = Db()
     datalib.db = db
-    db.setServiceParent(topService)
+    db.setServiceParent(top_service)
 
-    subService = MasterService(db)
-    subService.setServiceParent(topService)
+    sub_service = MasterService(db)
+    sub_service.setServiceParent(top_service)
 
-    topService.startService()
+    top_service.startService()
 
-    reactor.addSystemEventTrigger('before', 'shutdown', topService.stopService)
+    reactor.addSystemEventTrigger('before', 'shutdown', top_service.stopService)
 
     reactor.run()

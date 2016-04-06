@@ -37,8 +37,8 @@ class GraphiteReplica(object):
         if self.connecting and not reconnecting:
             return
         self.connecting = True
-        endPoint = TCP4ClientEndpoint(reactor, self.host, self.port, 10)
-        d = endPoint.connect(Factory.forProtocol(GraphiteProtocol))
+        end_point = TCP4ClientEndpoint(reactor, self.host, self.port, 10)
+        d = end_point.connect(Factory.forProtocol(GraphiteProtocol))
 
         def success(connection):
             self.connecting = False

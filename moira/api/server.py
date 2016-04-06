@@ -13,17 +13,17 @@ def run():
     config.read()
     logs.api()
 
-    topService = service.MultiService()
+    top_service = service.MultiService()
 
     db = Db()
     datalib.db = db
-    db.setServiceParent(topService)
+    db.setServiceParent(top_service)
 
-    httpService = internet.TCPServer(config.HTTP_PORT, Site(db), interface=config.HTTP_ADDR)
-    httpService.setServiceParent(topService)
+    http_service = internet.TCPServer(config.HTTP_PORT, Site(db), interface=config.HTTP_ADDR)
+    http_service.setServiceParent(top_service)
 
-    topService.startService()
+    top_service.startService()
 
-    reactor.addSystemEventTrigger('before', 'shutdown', topService.stopService)
+    reactor.addSystemEventTrigger('before', 'shutdown', top_service.stopService)
 
     reactor.run()
