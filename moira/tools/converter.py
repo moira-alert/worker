@@ -1,9 +1,11 @@
 import sys
+
 import txredisapi
-from twisted.python import log
 from twisted.internet import defer, reactor
-from moira.db import Db, METRIC_OLD_PREFIX, METRIC_PREFIX
+from twisted.python import log
+
 from moira import config
+from moira.db import Db, METRIC_OLD_PREFIX, METRIC_PREFIX
 
 
 @defer.inlineCallbacks
