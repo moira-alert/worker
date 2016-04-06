@@ -1,17 +1,18 @@
-import time
 import sys
+import time
+from datetime import datetime
+from functools import wraps
+from uuid import uuid4
+
 import anyjson
 import txredisapi as redis
-from twisted.internet import defer
 from twisted.application import service
-from uuid import uuid4
+from twisted.internet import defer
+
+from moira import config
 from moira.cache import cache
 from moira.logs import daily
 from moira.trigger import trigger_reformat
-from datetime import datetime
-from functools import wraps
-from moira import config
-
 
 _doc_string = """
 Redis database objects:

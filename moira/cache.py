@@ -1,6 +1,6 @@
-from twisted.internet import reactor, defer
 from functools import wraps
 
+from twisted.internet import reactor, defer
 
 CACHE = {}
 

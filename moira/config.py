@@ -1,12 +1,13 @@
+import argparse
+import os
 import socket
+
 import anyjson
 import yaml
-import os
-import argparse
-
 
 try:
     import ujson
+
     ujson.loads("{}")
     if anyjson._modules[0][0] != 'ujson':
         anyjson._modules.insert(
@@ -20,8 +21,6 @@ try:
     anyjson.force_implementation('ujson')
 except ImportError:
     ujson = None
-
-
 
 CONFIG_PATH = '/etc/moira/config.yml'
 REDIS_HOST = "localhost"
