@@ -1,10 +1,11 @@
+from moira.graphite import datalib
 from twisted.application import service, internet
 from twisted.internet import reactor
+
 from moira import config
-from moira.graphite import datalib
-from moira.db import Db
-from moira.api.site import Site
 from moira import logs
+from moira.api.site import Site
+from moira.db import Db
 
 
 def run():

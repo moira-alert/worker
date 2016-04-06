@@ -1,12 +1,14 @@
-import anyjson
 from time import time
-from twisted.python import log
-from twisted.internet import defer
-from twisted.web import http, server
-from moira.graphite.evaluator import evaluateTarget
+
+import anyjson
 from moira.graphite.datalib import createRequestContext
-from moira.trigger import trigger_reformat
+from moira.graphite.evaluator import evaluateTarget
+from twisted.internet import defer
+from twisted.python import log
+from twisted.web import http, server
+
 from moira.checker.expression import getExpression
+from moira.trigger import trigger_reformat
 
 
 def bad_request(request, message):
