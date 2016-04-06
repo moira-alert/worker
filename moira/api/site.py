@@ -18,7 +18,7 @@ class MoiraRequest(server.Request):
     def __init__(self, channel, queued):
         self.creation = reactor.seconds()
         self.body_json = None
-        return server.Request.__init__(self, channel, queued)
+        server.Request.__init__(self, channel, queued)
 
     def getLogin(self):
         return self.getHeader('x-webauth-user') or ''
