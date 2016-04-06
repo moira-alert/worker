@@ -9,7 +9,7 @@ from twisted.python import log
 
 class GraphiteProtocol(Protocol):
 
-    def sendMetrics(self, get_metrics):
+    def send_metrics(self, get_metrics):
         timestamp = int(time.time())
         metrics = get_metrics()
         for name, value in metrics:
@@ -22,7 +22,7 @@ class GraphiteProtocol(Protocol):
         self.connected = 0
 
 
-class GraphiteReplica:
+class GraphiteReplica(object):
 
     def __init__(self, host, port):
         self.host = host
@@ -37,8 +37,8 @@ class GraphiteReplica:
         if self.connecting and not reconnecting:
             return
         self.connecting = True
-        endPoint = TCP4ClientEndpoint(reactor, self.host, self.port, 10)
-        d = endPoint.connect(Factory.forProtocol(GraphiteProtocol))
+        end_point = TCP4ClientEndpoint(reactor, self.host, self.port, 10)
+        d = end_point.connect(Factory.forProtocol(GraphiteProtocol))
 
         def success(connection):
             self.connecting = False
@@ -54,10 +54,10 @@ class GraphiteReplica:
         return self.connection and self.connection.connected
 
     def send(self, get_metrics):
-        self.connection.sendMetrics(get_metrics)
+        self.connection.send_metrics(get_metrics)
 
 
-class GraphiteClusterClient:
+class GraphiteClusterClient(object):
 
     def __init__(self, replicas):
         self.replicas = replicas

@@ -9,13 +9,13 @@ def get_total_seconds(td):
             (td.microseconds + (td.seconds + td.days * 24 * 3600) * 10 ** 6) / 10 ** 6)
 
 
-class Spy:
+class Spy(object):
 
     def __init__(self):
         self.eventList = []
 
-    def trimEventList(self, timestamp):
-        while len(self.eventList) > 0:
+    def trim_event_list(self, timestamp):
+        while self.eventList:
             first_event = self.eventList[0]
             time_delta = timestamp - first_event['timestamp']
             if get_total_seconds(time_delta) > 60:
@@ -25,8 +25,8 @@ class Spy:
 
     def report(self, size):
         now = datetime.now()
-        self.trimEventList(now)
-        if len(self.eventList) > 0:
+        self.trim_event_list(now)
+        if self.eventList:
             last_batch = self.eventList[-1]
             time_delta = now - last_batch['timestamp']
             if get_total_seconds(time_delta) < 10:

@@ -1,8 +1,9 @@
-from twisted.internet import defer
-from moira.api.resources.redis import RedisResouce
-from moira.api.request import delayed, check_json
 from moira.graphite.attime import parseATTime
 from moira.graphite.util import epoch
+from twisted.internet import defer
+
+from moira.api.request import delayed, check_json
+from moira.api.resources.redis import RedisResouce
 
 
 class Test(RedisResouce):
@@ -35,9 +36,8 @@ class Subscription(RedisResouce):
     @delayed
     @defer.inlineCallbacks
     def render_DELETE(self, request):
-        login = request.getLogin()
         existing = yield self.db.getSubscription(self.sub_id)
-        yield self.db.removeUserSubscription(login, self.sub_id, request=request, existing=existing)
+        yield self.db.removeUserSubscription(request.login, self.sub_id, request=request, existing=existing)
         request.finish()
 
 
@@ -54,7 +54,7 @@ class Subscriptions(RedisResouce):
     @delayed
     @defer.inlineCallbacks
     def render_GET(self, request):
-        login = request.getLogin()
+        login = request.login
         subs = yield self.db.getUserSubscriptions(login)
         result = []
         yield self.db.join(subs, self.db.getSubscription, result)
@@ -64,7 +64,7 @@ class Subscriptions(RedisResouce):
     @check_json
     @defer.inlineCallbacks
     def render_PUT(self, request):
-        login = request.getLogin()
+        login = request.login
         get_existing = self.db.getSubscription(request.body_json.get('id'))
         sub = yield self.db.saveUserSubscription(login, request.body_json, request=request,
                                                  get_existing=get_existing)

@@ -1,12 +1,14 @@
-from twisted.python import log
-from twisted.internet import defer
 from datetime import datetime, timedelta
 from time import time
-from moira.graphite.evaluator import evaluateTarget
+
 from moira.graphite import datalib
-from moira.checker import state
-from moira.checker import expression
+from moira.graphite.evaluator import evaluateTarget
+from twisted.internet import defer
+from twisted.python import log
+
 from moira import config
+from moira.checker import expression
+from moira.checker import state
 
 
 class TargetTimeSeries(dict):
@@ -47,7 +49,7 @@ class TargetTimeSeries(dict):
             self.set_state_value(other_metric_state, expression_values, tN)
 
 
-class Trigger:
+class Trigger(object):
 
     def __init__(self, id, db):
         self.id = id
@@ -83,11 +85,12 @@ class Trigger:
             time_series = yield evaluateTarget(requestContext, target)
 
             if target_number > 1:
-                if len(time_series) > 1:
-                    raise Exception("Target #%s has more than one timeseries" % target_number)
-                if len(time_series) == 0:
+                if len(time_series) == 1:
+                    target_time_series.other_targets_names["t%s" % target_number] = time_series[0].name
+                elif not time_series:
                     raise Exception("Target #%s has no timeseries" % target_number)
-                target_time_series.other_targets_names["t%s" % target_number] = time_series[0].name
+                else:
+                    raise Exception("Target #%s has more than one timeseries" % target_number)
 
             for time_serie in time_series:
                 time_serie.last_state = self.last_check["metrics"].get(
@@ -122,7 +125,7 @@ class Trigger:
                 yield self.db.cleanupMetricValues(metric, now - config.METRICS_TTL,
                                                   cache_key=metric, cache_ttl=cache_ttl)
 
-            if len(time_series) == 0:
+            if not time_series:
                 if self.ttl:
                     check["state"] = self.ttl_state
                     check["msg"] = "Trigger has no metrics"
@@ -174,13 +177,13 @@ class Trigger:
                             for pattern in self.struct.get("patterns"):
                                 yield self.db.delPatternMetrics(pattern)
                             continue
-                        time_series.update_state(t1, check, state.toMetricState(self.ttl_state), None,
+                        time_series.update_state(t1, check, state.to_metric_state(self.ttl_state), None,
                                                  self.last_check["timestamp"] - self.ttl)
                         yield self.compare_state(metric_state, t1.last_state, metric_state["timestamp"], metric=t1.name)
 
         except StopIteration:
             raise
-        except:
+        except Exception:
             log.err()
             check["state"] = state.EXCEPTION
             check["msg"] = "Trigger evaluation exception"

@@ -1,17 +1,18 @@
-import time
 import sys
+import time
+from datetime import datetime
+from functools import wraps
+from uuid import uuid4
+
 import anyjson
 import txredisapi as redis
-from twisted.internet import defer
 from twisted.application import service
-from uuid import uuid4
+from twisted.internet import defer
+
+from moira import config
 from moira.cache import cache
 from moira.logs import daily
 from moira.trigger import trigger_reformat
-from datetime import datetime
-from functools import wraps
-from moira import config
-
 
 _doc_string = """
 Redis database objects:
@@ -129,11 +130,10 @@ def audit(f):
         if request:
             source = {} if request.body_json is None else request.body_json
             existing = {} if existing is None else existing
-            login = request.getLogin()
             now = datetime.now().isoformat()
             additions = [(k, source[k]) for k in source if k not in existing or source[k] != existing[k]]
             deletions = [(k, existing[k]) for k in existing if k not in source or source[k] != existing[k]]
-            audit_log.write(("%s\t%s\t%s\t%s\n" % (now, login, request.method, request.uri)).encode('utf-8'))
+            audit_log.write(("%s\t%s\t%s\t%s\n" % (now, request.login, request.method, request.uri)).encode('utf-8'))
             for key, add in additions:
                 audit_log.write(("\t+ %s:%s\n" % (key, add)).encode("utf-8"))
             for key, deletion in deletions:
@@ -408,7 +408,7 @@ class Db(service.Service):
             - Update trigger patterns set {3}
 
         :param trigger: trigger json object
-        :type trigger: object
+        :type trigger: dict
         :param trigger_id: trigger identity
         :type trigger_id: string
         """
@@ -441,7 +441,7 @@ class Db(service.Service):
         yield t.commit()
         for pattern in cleanup_patterns:
             triggers = yield self.getPatternTriggers(pattern)
-            if len(triggers) == 0:
+            if not triggers:
                 yield self.removePatternTriggers(pattern)
                 yield self.removePattern(pattern)
                 yield self.delPatternMetrics(pattern)

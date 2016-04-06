@@ -1,12 +1,14 @@
-import anyjson
 from time import time
-from twisted.python import log
-from twisted.internet import defer
-from twisted.web import http, server
-from moira.graphite.evaluator import evaluateTarget
+
+import anyjson
 from moira.graphite.datalib import createRequestContext
-from moira.trigger import trigger_reformat
+from moira.graphite.evaluator import evaluateTarget
+from twisted.internet import defer
+from twisted.python import log
+from twisted.web import http, server
+
 from moira.checker.expression import getExpression
+from moira.trigger import trigger_reformat
 
 
 def bad_request(request, message):
@@ -23,7 +25,7 @@ def check_json(f):
         try:
             request.body = request.content.getvalue()
             request.body_json = anyjson.deserialize(request.body)
-        except:
+        except Exception:
             log.err()
             defer.returnValue(bad_request(request, "Content is not json"))
         yield f(*args, **kwargs)
@@ -33,21 +35,21 @@ def check_json(f):
 @defer.inlineCallbacks
 def resolve_patterns(request, expression_values):
     now = int(time())
-    requestContext = createRequestContext(str(now - 10), str(now))
+    context = createRequestContext(str(now - 10), str(now))
     resolved = set()
     target_num = 1
     for target in request.body_json["targets"]:
-        target_time_series = yield evaluateTarget(requestContext, target)
+        target_time_series = yield evaluateTarget(context, target)
         target_name = "t%s" % target_num
         expression_values[target_name] = 42
-        if len(target_time_series) > 0 and len(target_time_series[0]) > 0:
+        if target_time_series and target_time_series[0]:
             expression_values[target_name] = target_time_series[0][-1]
         target_num += 1
-        for pattern, resolve in requestContext['graphite_patterns'].iteritems():
+        for pattern, resolve in context['graphite_patterns'].iteritems():
             for r in resolve:
                 if r != pattern:
                     resolved.add(r)
-    request.body_json["patterns"] = [pattern for pattern in requestContext['graphite_patterns']
+    request.body_json["patterns"] = [pattern for pattern in context['graphite_patterns']
                                      if pattern not in resolved]
 
 
@@ -62,19 +64,19 @@ def check_trigger(f):
                 defer.returnValue(bad_request(request, "%s is required" % field))
         try:
             request.body_json = trigger_reformat(json, json.get("id"), json.get("tags", []))
-        except:
+        except Exception:
             log.err()
             defer.returnValue(bad_request(request, "Invalid trigger format"))
         expression_values = {'warn_value': json.get('warn_value'),
                              'error_value': json.get('error_value')}
         try:
             yield resolve_patterns(request, expression_values)
-        except:
+        except Exception:
             log.err()
             defer.returnValue(bad_request(request, "Invalid graphite target"))
         try:
             getExpression(json.get("expression"), **expression_values)
-        except:
+        except Exception:
             log.err()
             defer.returnValue(bad_request(request, "Invalid expression"))
         yield f(*args, **kwargs)
@@ -87,7 +89,7 @@ def delayed(f):
         def wrapper():
             try:
                 yield f(resource, request)
-            except:
+            except Exception:
                 log.err()
                 request.setResponseCode(http.INTERNAL_SERVER_ERROR)
                 request.finish()

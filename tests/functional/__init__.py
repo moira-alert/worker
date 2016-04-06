@@ -19,7 +19,6 @@ from moira.graphite import datalib
 from moira.checker.worker import TriggersCheck
 from moira.checker.trigger import Trigger
 from moira import db
-from moira import config
 
 
 def trigger(trigger_id):
@@ -32,7 +31,7 @@ def trigger(trigger_id):
     return decorator
 
 
-class TwistedFakeTransaction():
+class TwistedFakeTransaction(object):
 
     def __init__(self, pipeline):
         self.pipeline = pipeline

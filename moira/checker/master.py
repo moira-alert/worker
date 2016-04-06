@@ -1,9 +1,12 @@
 import anyjson
+
 import txredisapi as redis
+
 from twisted.application import service
-from twisted.python import log
 from twisted.internet import defer, reactor
 from twisted.internet.task import LoopingCall
+from twisted.python import log
+
 from moira import config
 
 
@@ -19,7 +22,7 @@ class MasterProtocol(redis.SubscriberProtocol):
             metric = json["metric"]
             yield db.addPatternMetric(pattern, metric)
             triggers = yield db.getPatternTriggers(pattern)
-            if len(triggers) == 0:
+            if not triggers:
                 yield db.removePattern(pattern)
                 metrics = yield db.getPatternMetrics(pattern)
                 for metric in metrics:
@@ -31,7 +34,7 @@ class MasterProtocol(redis.SubscriberProtocol):
                     yield db.addTriggerCheck(trigger_id)
                 else:
                     yield db.addTriggerCheck(trigger_id, cache_key=trigger_id, cache_ttl=config.CHECK_INTERVAL)
-        except:
+        except Exception:
             log.err()
 
 
@@ -68,7 +71,7 @@ class MasterService(service.Service):
                 triggers = yield self.db.getTriggers()
                 for trigger_id in triggers:
                     yield self.db.addTriggerCheck(trigger_id, cache_key=trigger_id, cache_ttl=60)
-        except:
+        except Exception:
             log.err()
 
     @defer.inlineCallbacks

@@ -1,6 +1,6 @@
 import ast
-import _ast
 import operator
+
 from moira.checker import state
 
 _default = ast.parse("ERROR if compare_operator(t1, error_value) else \
@@ -21,12 +21,12 @@ def compile_expression(exp):
         return cached
     _exp = ast.parse(exp)
     nodes = [node for node in ast.walk(_exp)]
-    if len(nodes) < 2 or not isinstance(nodes[1], _ast.Expr):
+    if len(nodes) < 2 or not isinstance(nodes[1], ast.Expr):
         raise ExpressionError("%s is not Expression" % exp)
     for node in nodes:
-        if isinstance(node, _ast.Call):
+        if isinstance(node, ast.Call):
             raise ExpressionError("Call method is forbidden")
-        if isinstance(node, _ast.Lambda):
+        if isinstance(node, ast.Lambda):
             raise ExpressionError("Lambda is strongly forbidden")
     result = compile(exp, '<string>', mode='eval')
     cache[exp] = result

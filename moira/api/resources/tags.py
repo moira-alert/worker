@@ -1,7 +1,8 @@
-from twisted.web import http
 from twisted.internet import defer
-from moira.api.resources.redis import RedisResouce
+from twisted.web import http
+
 from moira.api.request import delayed, check_json
+from moira.api.resources.redis import RedisResouce
 
 
 class Stats(RedisResouce):
@@ -53,7 +54,7 @@ class Tag(RedisResouce):
     @defer.inlineCallbacks
     def render_DELETE(self, request):
         triggers = yield self.db.getTagTriggers(self.tag)
-        if len(triggers) > 0:
+        if triggers:
             request.setResponseCode(http.BAD_REQUEST)
             request.write(
                 "This tag is assigned to %s triggers. Remove tag from triggers first" %

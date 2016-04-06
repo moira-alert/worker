@@ -1,9 +1,10 @@
-from moira.api.request import delayed
-from twisted.internet import defer, reactor, task
-from moira.api.resources.redis import RedisResouce
-from moira.graphite.evaluator import evaluateTarget
 from moira.graphite.datalib import createRequestContext
+from moira.graphite.evaluator import evaluateTarget
+from twisted.internet import defer, reactor, task
+
 from moira.api.request import bad_request
+from moira.api.request import delayed
+from moira.api.resources.redis import RedisResouce
 
 
 class Metrics(RedisResouce):
@@ -20,11 +21,11 @@ class Metrics(RedisResouce):
             defer.returnValue(bad_request(request, "Trigger not found"))
             raise StopIteration
 
-        requestContext = createRequestContext(request.args.get('from')[0],
+        context = createRequestContext(request.args.get('from')[0],
                                               request.args.get('to')[0])
         result = {}
         for target in trigger.get("targets", [trigger.get("target")]):
-            time_series = yield evaluateTarget(requestContext, target)
+            time_series = yield evaluateTarget(context, target)
             for time_serie in time_series:
                 values = [(time_serie.start + time_serie.step * i, time_serie[i]) for i in range(0, len(time_serie))]
                 result[time_serie.name] = [{"ts": ts, "value": value} for ts, value in values if value is not None]

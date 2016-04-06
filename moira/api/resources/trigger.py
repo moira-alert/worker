@@ -1,6 +1,8 @@
 import uuid
-from twisted.web import http
+
 from twisted.internet import defer
+from twisted.web import http
+
 from moira.api.request import delayed, check_json
 from moira.api.resources.metric import Metrics
 from moira.api.resources.redis import RedisResouce

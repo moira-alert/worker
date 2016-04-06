@@ -1,13 +1,14 @@
 import random
-from twisted.python import log
-from twisted.internet import defer, reactor, task
-from moira.graphite import datalib
-from moira.metrics import spy, graphite
-from moira.db import Db
-from moira import logs
-from moira import config
-from moira.checker.trigger import Trigger
 
+from moira.graphite import datalib
+from twisted.internet import defer, reactor, task
+from twisted.python import log
+
+from moira import config
+from moira import logs
+from moira.checker.trigger import Trigger
+from moira.db import Db
+from moira.metrics import spy, graphite
 
 PERFORM_INTERVAL = 0.01
 ERROR_TIMEOUT = 10
@@ -45,7 +46,7 @@ class TriggersCheck:
             yield task.deferLater(reactor, random.uniform(PERFORM_INTERVAL * 10, PERFORM_INTERVAL * 20), lambda: None)
         except GeneratorExit:
             pass
-        except:
+        except Exception:
             spy.TRIGGER_CHECK_ERRORS.report(0)
             log.err()
             yield task.deferLater(reactor, ERROR_TIMEOUT, lambda: None)

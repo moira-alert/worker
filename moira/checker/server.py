@@ -1,16 +1,17 @@
 import multiprocessing
 import os
-from sys import executable
-from os import environ
+import sys
+
+from moira.graphite import datalib
 from twisted.application import service
-from twisted.python import log
 from twisted.internet import reactor
 from twisted.internet.protocol import ProcessProtocol
-from moira.checker.master import MasterService
-from moira.graphite import datalib
-from moira.db import Db
+from twisted.python import log
+
 from moira import config
 from moira import logs
+from moira.checker.master import MasterService
+from moira.db import Db
 
 WORKER_PATH = os.path.abspath(
     os.path.join(
@@ -37,9 +38,9 @@ class TopService(service.MultiService):
         service.MultiService.startService(self)
         for i in range(max(1, multiprocessing.cpu_count() - 1)):
             checker = reactor.spawnProcess(
-                CheckerProcessProtocol(), executable,
+                CheckerProcessProtocol(), sys.executable,
                 ['moira-checker', WORKER_PATH, "-n", str(i), "-c", config.CONFIG_PATH, "-l", config.LOG_DIRECTORY],
-                childFDs={0: 'w', 1: 1, 2: 2}, env=environ)
+                childFDs={0: 'w', 1: 1, 2: 2}, env=os.environ)
             self.checkers.append(checker)
 
 
@@ -48,17 +49,17 @@ def run():
     config.read()
     logs.checker_master()
 
-    topService = TopService()
+    top_service = TopService()
 
     db = Db()
     datalib.db = db
-    db.setServiceParent(topService)
+    db.setServiceParent(top_service)
 
-    subService = MasterService(db)
-    subService.setServiceParent(topService)
+    sub_service = MasterService(db)
+    sub_service.setServiceParent(top_service)
 
-    topService.startService()
+    top_service.startService()
 
-    reactor.addSystemEventTrigger('before', 'shutdown', topService.stopService)
+    reactor.addSystemEventTrigger('before', 'shutdown', top_service.stopService)
 
     reactor.run()

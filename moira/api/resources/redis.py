@@ -1,6 +1,7 @@
 import anyjson
-from twisted.web.resource import Resource
 from twisted.internet import defer
+from twisted.web.resource import Resource
+
 from moira.api.request import check_trigger, check_json
 
 

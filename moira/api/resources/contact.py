@@ -1,5 +1,6 @@
-from moira.api.request import delayed, check_json
 from twisted.internet import defer
+
+from moira.api.request import delayed, check_json
 from moira.api.resources.redis import RedisResouce
 
 
@@ -12,7 +13,7 @@ class Contact(RedisResouce):
     @delayed
     @defer.inlineCallbacks
     def render_DELETE(self, request):
-        login = request.getLogin()
+        login = request.login
         existing = yield self.db.getContact(self.contact_id)
         yield self.db.deleteUserContact(self.contact_id, login,
                                         request=request, existing=existing)
@@ -20,10 +21,6 @@ class Contact(RedisResouce):
 
 
 class Contacts(RedisResouce):
-
-    def __init__(self, db):
-        RedisResouce.__init__(self, db)
-
     def getChild(self, path, request):
         if not path:
             return self
@@ -39,10 +36,9 @@ class Contacts(RedisResouce):
     @check_json
     @defer.inlineCallbacks
     def render_PUT(self, request):
-        login = request.getLogin()
         existing_id = request.body_json.get("id")
         existing = None if existing_id is None else (yield self.db.getContact(existing_id))
-        contact = yield self.db.saveUserContact(login, request.body_json,
+        contact = yield self.db.saveUserContact(request.login, request.body_json,
                                                 request=request,
                                                 existing=existing)
         self.write_json(request, contact)
