@@ -20,10 +20,6 @@ class Contact(RedisResouce):
 
 
 class Contacts(RedisResouce):
-
-    def __init__(self, db):
-        RedisResouce.__init__(self, db)
-
     def getChild(self, path, request):
         if not path:
             return self

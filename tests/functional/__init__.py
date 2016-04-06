@@ -19,7 +19,6 @@ from moira.graphite import datalib
 from moira.checker.worker import TriggersCheck
 from moira.checker.trigger import Trigger
 from moira import db
-from moira import config
 
 
 def trigger(trigger_id):
