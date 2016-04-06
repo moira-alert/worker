@@ -1,12 +1,14 @@
-from twisted.python import log
-from twisted.internet import defer
 from datetime import datetime, timedelta
 from time import time
-from moira.graphite.evaluator import evaluateTarget
+
 from moira.graphite import datalib
-from moira.checker import state
-from moira.checker import expression
+from moira.graphite.evaluator import evaluateTarget
+from twisted.internet import defer
+from twisted.python import log
+
 from moira import config
+from moira.checker import expression
+from moira.checker import state
 
 
 class TargetTimeSeries(dict):

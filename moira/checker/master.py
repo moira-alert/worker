@@ -1,9 +1,12 @@
 import anyjson
+
 import txredisapi as redis
+
 from twisted.application import service
-from twisted.python import log
 from twisted.internet import defer, reactor
 from twisted.internet.task import LoopingCall
+from twisted.python import log
+
 from moira import config
 
 
