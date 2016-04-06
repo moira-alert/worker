@@ -32,7 +32,7 @@ def trigger(trigger_id):
     return decorator
 
 
-class TwistedFakeTransaction():
+class TwistedFakeTransaction(object):
 
     def __init__(self, pipeline):
         self.pipeline = pipeline

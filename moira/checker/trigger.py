@@ -47,7 +47,7 @@ class TargetTimeSeries(dict):
             self.set_state_value(other_metric_state, expression_values, tN)
 
 
-class Trigger:
+class Trigger(object):
 
     def __init__(self, id, db):
         self.id = id

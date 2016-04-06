@@ -9,7 +9,7 @@ def get_total_seconds(td):
             (td.microseconds + (td.seconds + td.days * 24 * 3600) * 10 ** 6) / 10 ** 6)
 
 
-class Spy:
+class Spy(object):
 
     def __init__(self):
         self.eventList = []

@@ -22,7 +22,7 @@ class GraphiteProtocol(Protocol):
         self.connected = 0
 
 
-class GraphiteReplica:
+class GraphiteReplica(object):
 
     def __init__(self, host, port):
         self.host = host
@@ -57,7 +57,7 @@ class GraphiteReplica:
         self.connection.sendMetrics(get_metrics)
 
 
-class GraphiteClusterClient:
+class GraphiteClusterClient(object):
 
     def __init__(self, replicas):
         self.replicas = replicas
