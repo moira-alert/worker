@@ -12,7 +12,7 @@ class Login(RedisResouce):
 
     @delayed
     def render_GET(self, request):
-        login = request.login()
+        login = request.login
         self.write_json(request, {'login': login})
 
 
@@ -24,7 +24,7 @@ class Settings(RedisResouce):
     @delayed
     @defer.inlineCallbacks
     def render_GET(self, request):
-        login = request.login()
+        login = request.login
         settings = {"login": login,
                     "subscriptions": [],
                     "contacts": []}
