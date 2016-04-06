@@ -20,7 +20,7 @@ class MoiraRequest(server.Request):
         self.body_json = None
         server.Request.__init__(self, channel, queued)
 
-    def getLogin(self):
+    def login(self):
         return self.getHeader('x-webauth-user') or ''
 
 

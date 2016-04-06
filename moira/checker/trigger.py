@@ -177,7 +177,7 @@ class Trigger(object):
                             for pattern in self.struct.get("patterns"):
                                 yield self.db.delPatternMetrics(pattern)
                             continue
-                        time_series.update_state(t1, check, state.toMetricState(self.ttl_state), None,
+                        time_series.update_state(t1, check, state.to_metric_state(self.ttl_state), None,
                                                  self.last_check["timestamp"] - self.ttl)
                         yield self.compare_state(metric_state, t1.last_state, metric_state["timestamp"], metric=t1.name)
 

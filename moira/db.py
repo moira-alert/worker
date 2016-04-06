@@ -130,7 +130,7 @@ def audit(f):
         if request:
             source = {} if request.body_json is None else request.body_json
             existing = {} if existing is None else existing
-            login = request.getLogin()
+            login = request.login()
             now = datetime.now().isoformat()
             additions = [(k, source[k]) for k in source if k not in existing or source[k] != existing[k]]
             deletions = [(k, existing[k]) for k in existing if k not in source or source[k] != existing[k]]

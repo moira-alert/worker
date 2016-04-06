@@ -6,7 +6,7 @@ EXCEPTION = "EXCEPTION"
 DEL = "DEL"
 
 
-def toMetricState(state):
+def to_metric_state(state):
     if state == DEL:
         return NODATA
     return state

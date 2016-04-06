@@ -9,7 +9,7 @@ from twisted.python import log
 
 class GraphiteProtocol(Protocol):
 
-    def sendMetrics(self, get_metrics):
+    def send_metrics(self, get_metrics):
         timestamp = int(time.time())
         metrics = get_metrics()
         for name, value in metrics:
@@ -54,7 +54,7 @@ class GraphiteReplica(object):
         return self.connection and self.connection.connected
 
     def send(self, get_metrics):
-        self.connection.sendMetrics(get_metrics)
+        self.connection.send_metrics(get_metrics)
 
 
 class GraphiteClusterClient(object):

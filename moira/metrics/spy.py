@@ -14,7 +14,7 @@ class Spy(object):
     def __init__(self):
         self.eventList = []
 
-    def trimEventList(self, timestamp):
+    def trim_event_list(self, timestamp):
         while self.eventList:
             first_event = self.eventList[0]
             time_delta = timestamp - first_event['timestamp']
@@ -25,7 +25,7 @@ class Spy(object):
 
     def report(self, size):
         now = datetime.now()
-        self.trimEventList(now)
+        self.trim_event_list(now)
         if self.eventList:
             last_batch = self.eventList[-1]
             time_delta = now - last_batch['timestamp']
