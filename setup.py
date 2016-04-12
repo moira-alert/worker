@@ -26,9 +26,5 @@ setup(
                             'moira-checker = moira.checker.server:run',
                             'moira-update = moira.tools.converter:run'],
     },
-    data_files=[
-        ('/usr/lib/systemd/system', ['pkg/moira-api.service', 'pkg/moira-checker.service']),
-        ('/etc/moira/', ['pkg/worker.yml']),
-    ],
     install_requires=required,
 )
