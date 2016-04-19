@@ -13,3 +13,4 @@ We express gratitude to Graphite authors - without them Moira would have been im
 - Alexey Larkov (larkov@skbkontur.ru)
 
 # Contributors
+- Denis Kataev (denis.a.kataev+git@gmail.com)
