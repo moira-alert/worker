@@ -22,7 +22,7 @@ class Metrics(RedisResouce):
             raise StopIteration
 
         context = createRequestContext(request.args.get('from')[0],
-                                              request.args.get('to')[0])
+                                       request.args.get('to')[0])
         result = {}
         for target in trigger.get("targets", [trigger.get("target")]):
             time_series = yield evaluateTarget(context, target)

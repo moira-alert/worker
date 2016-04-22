@@ -65,6 +65,7 @@ def read():
     global METRICS_TTL
     global ARGS
     global STOP_CHECKING_INTERVAL
+    global CONFIG_PATH
 
     parser = get_parser()
     args = parser.parse_args()
