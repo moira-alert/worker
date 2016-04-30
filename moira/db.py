@@ -853,6 +853,27 @@ class Db(service.Service):
         defer.returnValue(ok)
 
     @defer.inlineCallbacks
+    def accuireTriggerCheckLock(self, trigger_id, timeout):
+        """
+        accuireTriggerCheckLock(self, trigger_id, timeout)
+
+        Try to accuire lock for trigger check until timeout
+
+        :param trigger_id: trigger identity
+        :type trigger_id: string
+        :param timeout: timeout in seconds
+        :type timeout: float
+        """
+        accuired = yield self.setTriggerCheckLock(trigger_id)
+        count = 0
+        while accuired is None and count < timeout:
+            count += 1
+            yield task.deferLater(reactor, 0.5, lambda: None)
+            accuired = yield self.setTriggerCheckLock(trigger_id)
+        if accuired is None:
+            raise Exception("Can not accuire trigger lock in {0} seconds".format(timeout))
+
+    @defer.inlineCallbacks
     @docstring_parameters(TRIGGER_CHECK_LOCK_PREFIX.format("<trigger_id>"))
     def delTriggerCheckLock(self, trigger_id):
         """

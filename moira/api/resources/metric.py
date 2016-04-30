@@ -1,6 +1,6 @@
 from moira.graphite.datalib import createRequestContext
 from moira.graphite.evaluator import evaluateTarget
-from twisted.internet import defer, reactor, task
+from twisted.internet import defer
 
 from moira.api.request import bad_request
 from moira.api.request import delayed
@@ -42,14 +42,7 @@ class Metrics(RedisResouce):
             defer.returnValue(bad_request(request, "Trigger not found"))
             raise StopIteration
 
-        accuired = yield self.db.setTriggerCheckLock(self.trigger_id)
-        count = 0
-        while accuired is None and count < 10:
-            count += 1
-            yield task.deferLater(reactor, 0.5, lambda: None)
-            accuired = yield self.db.setTriggerCheckLock(self.trigger_id)
-        if accuired is None:
-            raise Exception("Can not accuire trigger lock")
+        yield self.db.accuireTriggerCheckLock(self.trigger_id, 10)
 
         last_check = yield self.db.getTriggerLastCheck(self.trigger_id)
 
