@@ -65,6 +65,23 @@ class ApiTests(WorkerTests):
         patterns = yield self.db.getPatterns()
         self.assertEqual(len(patterns), 0)
 
+    @trigger("last-check-cleanup")
+    @inlineCallbacks
+    def testLastCheckCleanup(self):
+        response, body = yield self.request('PUT', 'trigger/{0}'.format(self.trigger.id),
+                                            '{"targets": ["aliasByNode(DevOps.*.Metric, 1)"], \
+                                             "warn_value": 1, "error_value": 2}')
+        yield self.db.sendMetric('DevOps.*.Metric', 'DevOps.Node1.Metric', self.now - 60, 0)
+        yield self.trigger.check()
+        check = yield self.db.getTriggerLastCheck(self.trigger.id)
+        self.assertTrue('Node1' in check['metrics'])
+        response, body = yield self.request('PUT', 'trigger/{0}'.format(self.trigger.id),
+                                            '{"targets": ["aliasByNode(DevOps.*.Metric, 2)"], \
+                                             "warn_value": 1, "error_value": 2}')
+        check = yield self.db.getTriggerLastCheck(self.trigger.id)
+        self.assertEqual({}, check.get('metrics'))
+
+
     @trigger("delete-tag")
     @inlineCallbacks
     def testTagDeletion(self):
