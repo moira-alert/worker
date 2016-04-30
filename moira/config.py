@@ -83,12 +83,13 @@ def read():
             LOG_DIRECTORY = cfg['worker']['log_dir']
             HTTP_PORT = cfg['api']['port']
             HTTP_ADDR = cfg['api']['listen']
-            for key in cfg['graphite']:
-                if key.startswith('uri'):
-                    host, port = cfg['graphite'][key].split(':')
-                    GRAPHITE.append((host, int(port)))
-            GRAPHITE_PREFIX = cfg['graphite']['prefix']
-            GRAPHITE_INTERVAL = cfg['graphite']['interval']
+            if 'graphite' in cfg:
+                for key in cfg['graphite']:
+                    if key.startswith('uri'):
+                        host, port = cfg['graphite'][key].split(':')
+                        GRAPHITE.append((host, int(port)))
+                GRAPHITE_PREFIX = cfg['graphite']['prefix']
+                GRAPHITE_INTERVAL = cfg['graphite']['interval']
             NODATA_CHECK_INTERVAL = cfg['checker'].get('nodata_check_interval', 60)
             CHECK_INTERVAL = cfg['checker'].get('check_interval', 5)
             METRICS_TTL = cfg['checker'].get('metrics_ttl', 3600)
