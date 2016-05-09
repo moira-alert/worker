@@ -4,7 +4,7 @@ from moira.graphite.evaluator import evaluateTarget
 from twisted.internet import defer
 
 from moira.checker import state
-from moira.checker.check import trigger
+from moira.checker import check
 from moira.checker.timeseries import TargetTimeSeries
 
 
@@ -35,8 +35,7 @@ class Trigger(object):
             self.last_check = {
                 "metrics": {},
                 "state": state.NODATA,
-                "timestamp": begin,
-                "score": None
+                "timestamp": begin
             }
             self.update_score = True
         defer.returnValue(True)
@@ -70,7 +69,7 @@ class Trigger(object):
 
     @defer.inlineCallbacks
     def check(self, fromTime=None, now=None, cache_ttl=60):
-        yield trigger(self, fromTime, now, cache_ttl)
+        yield check.trigger(self, fromTime, now, cache_ttl)
 
     def isSchedAllows(self, ts):
         sched = self.struct.get('sched')

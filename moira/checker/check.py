@@ -22,7 +22,13 @@ def trigger(trigger, fromTime, now, cache_ttl):
 
     requestContext = datalib.createRequestContext(str(fromTime - (trigger.ttl or 600)), str(now))
 
-    check = {"metrics": trigger.last_check["metrics"].copy(), "state": state.OK, "timestamp": now}
+    check = {
+        "metrics": trigger.last_check["metrics"].copy(),
+        "state": state.OK,
+        "timestamp": now,
+        "score": trigger.last_check.get("score")
+    }
+
     try:
         time_series = yield trigger.get_timeseries(requestContext)
 
@@ -94,4 +100,11 @@ def trigger(trigger, fromTime, now, cache_ttl):
         check["state"] = state.EXCEPTION
         check["msg"] = "Trigger evaluation exception"
         yield event.compare_states(trigger, check, trigger.last_check, now)
+    if trigger.update_score:
+        update_score(check)
     yield trigger.db.setTriggerLastCheck(trigger.id, check)
+
+
+def update_score(check):
+    scores = sum(map(lambda m: state.SCORES[m["state"]], check["metrics"].itervalues()))
+    check["score"] = float(100 * (scores + state.SCORES[check["state"]]) / (len(check["metrics"]) + 1)) / 100
