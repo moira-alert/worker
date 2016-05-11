@@ -50,10 +50,12 @@ def trigger(trigger, fromTime, now, cache_ttl):
             for t1 in time_series[1]:
 
                 metric_state = check["metrics"][t1.name]
+                checkpoint = max(t1.last_state["timestamp"] - config.CHECKPOINT_GAP,
+                                 metric_state.get("event_timestamp", 0))
 
                 for value_timestamp in xrange(t1.start, now + t1.step, t1.step):
 
-                    if value_timestamp <= t1.last_state["timestamp"]:
+                    if value_timestamp <= checkpoint:
                         continue
 
                     expression_values = time_series.get_expression_values(t1, value_timestamp)
