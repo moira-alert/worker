@@ -22,7 +22,7 @@ Redis database objects:
     - KEY {3}
     - LIST {4}
     - LIST {5}
-    - ZRANGE {6}
+    - SORTED SET {6}
     - KEY {7}
     - SET {8}
     - SET {9}
@@ -35,10 +35,11 @@ Redis database objects:
     - KEY {16}
     - KEY {17}
     - SET {18}
-    - ZRANGE {19}
+    - SORTED SET {19}
     - SET {20}
     - KEY {21}
     - KEY {22}
+    - SORTED SET {23}
 """
 
 __docformat__ = 'reStructuredText'
@@ -50,6 +51,7 @@ PATTERN_TRIGGERS_PREFIX = "moira-pattern-triggers:{0}"
 TRIGGER_PREFIX = "moira-trigger:{0}"
 EVENTS = "moira-trigger-events"
 EVENTS_UI = "moira-trigger-events-ui"
+TRIGGERS_CHECKS = "moira-triggers-checks"
 METRIC_OLD_PREFIX = "moira-metric:{0}"
 METRIC_PREFIX = "moira-metric-data:{0}"
 METRIC_RETENTION_PREFIX = "moira-metric-retention:{0}"
@@ -99,7 +101,8 @@ current_module.__doc__ = _doc_string.format(
     TRIGGER_EVENTS.format("<trigger_id>"),
     TRIGGER_THROTTLING_BEGINNING_PREFIX.format("<trigger_id>"),
     TAG_PREFIX.format("<tag>"),
-    TRIGGER_CHECK_LOCK_PREFIX.format("trigger_id")
+    TRIGGER_CHECK_LOCK_PREFIX.format("trigger_id"),
+    TRIGGERS_CHECKS
 )
 
 
@@ -513,15 +516,7 @@ class Db(service.Service):
         defer.returnValue((json, trigger))
 
     @defer.inlineCallbacks
-    def getTriggersChecks(self):
-        """
-        getTriggersChecks(self)
-
-        - Returns all triggers with it check
-
-        :rtype: json
-        """
-        triggers_ids = list((yield self.getTriggers()))
+    def _getTriggersChecks(self, triggers_ids):
         triggers = []
         pipeline = yield self.rc.pipeline()
         for trigger_id in triggers_ids:
@@ -539,7 +534,38 @@ class Db(service.Service):
             trigger["last_check"] = None if last_check is None else anyjson.deserialize(last_check)
             trigger["throttling"] = long(throttling) if throttling and time.time() < long(throttling) else 0
             triggers.append(trigger)
-        defer.returnValue({"list": triggers})
+        defer.returnValue(triggers)
+
+    @defer.inlineCallbacks
+    def getTriggersChecks(self):
+        """
+        getTriggersChecks(self)
+
+        - Returns all triggers with it check
+
+        :rtype: json
+        """
+        triggers_ids = list((yield self.getTriggers()))
+        triggers = yield self._getTriggersChecks(triggers_ids)
+        defer.returnValue(triggers)
+
+    @defer.inlineCallbacks
+    @docstring_parameters(TRIGGERS_CHECKS)
+    def getTriggersChecksPage(self, start, size):
+        """
+        getTriggersChecksPage(self, start, size)
+
+        - Returns triggers range from sorted set {0}
+
+        :param start: start position in range
+        :type start: integer
+        :param start: number of triggers
+        :type start: integer
+        :rtype: json
+        """
+        triggers_ids = yield self.rc.zrevrange(TRIGGERS_CHECKS, start=start, end=(start + size))
+        triggers = yield self._getTriggersChecks(triggers_ids)
+        defer.returnValue(triggers)
 
     @defer.inlineCallbacks
     @docstring_parameters(TRIGGER_NEXT_PREFIX.format("<trigger_id>"))
@@ -835,7 +861,11 @@ class Db(service.Service):
         :param check: trigger checking result
         :type check: json dict
         """
-        yield self.rc.set(LAST_CHECK_PREFIX.format(trigger_id), anyjson.serialize(check))
+        json = anyjson.serialize(check)
+        t = yield self.rc.multi()
+        yield t.set(LAST_CHECK_PREFIX.format(trigger_id), json)
+        yield t.zadd(TRIGGERS_CHECKS, check["score"], trigger_id)
+        yield t.commit()
 
     @defer.inlineCallbacks
     @docstring_parameters(TRIGGER_CHECK_LOCK_PREFIX.format("<trigger_id>"))

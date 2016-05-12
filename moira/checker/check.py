@@ -109,4 +109,4 @@ def trigger(trigger, fromTime, now, cache_ttl):
 
 def update_score(check):
     scores = sum(map(lambda m: state.SCORES[m["state"]], check["metrics"].itervalues()))
-    check["score"] = float(100 * (scores + state.SCORES[check["state"]]) / (len(check["metrics"]) + 1)) / 100
+    check["score"] = 100 * (scores + state.SCORES[check["state"]]) / (len(check["metrics"]) + 1)

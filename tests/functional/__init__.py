@@ -66,6 +66,9 @@ class TwistedFakeRedis(FakeStrictRedis):
     def zrange(self, key, start=0, end=-1, withscores=False):
         return FakeStrictRedis.zrange(self, key, start, end, withscores=withscores)
 
+    def zrevrange(self, key, start=0, end=-1, withscores=False):
+        return FakeStrictRedis.zrange(self, key, start, end, desc=True, withscores=withscores)
+
     def zrangebyscore(self, key, min='-inf', max='+inf',
                       withscores=False, offset=None, count=None):
         return FakeStrictRedis.zrangebyscore(self, key, min, max, start=offset, num=count, withscores=withscores)

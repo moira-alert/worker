@@ -95,6 +95,7 @@ class Triggers(RedisResouce):
 
     def __init__(self, db):
         RedisResouce.__init__(self, db)
+        self.putChild("page", Page(db))
 
     def getChild(self, path, request):
         if not path:
@@ -105,10 +106,26 @@ class Triggers(RedisResouce):
     @defer.inlineCallbacks
     def render_GET(self, request):
         result = yield self.db.getTriggersChecks()
-        self.write_json(request, result)
+        self.write_json(request, {"list": result})
 
     @delayed
     @defer.inlineCallbacks
     def render_PUT(self, request):
         trigger_id = str(uuid.uuid4())
         yield self.save_trigger(request, trigger_id, "trigger created")
+
+
+class Page(RedisResouce):
+
+    def __init__(self, db):
+        RedisResouce.__init__(self, db)
+
+    @delayed
+    @defer.inlineCallbacks
+    def render_GET(self, request):
+        start = request.args.get("start")
+        size = request.args.get("size")
+        start = 0 if start is None else start[0]
+        size = 10 if size is None else size[0]
+        result = yield self.db.getTriggersChecksPage(start, size)
+        self.write_json(request, {"list": result, "start": start, "size": size})
