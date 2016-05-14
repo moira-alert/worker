@@ -12,14 +12,15 @@ from moira import logs
 class ApiTests(WorkerTests):
 
     @inlineCallbacks
-    def request(self, method, url, content=None, state=http.OK):
+    def request(self, method, url, content=None, state=http.OK, add_headers=None):
         body = None if content is None else client.FileBodyProducer(
             StringIO(content))
-        headers = Headers({'Content-Type': ['application/json'],
-                           'X-WebAuth-User': ['tester']})
+        headers = {'Content-Type': ['application/json'], 'X-WebAuth-User': ['tester']}
+        if add_headers:
+            headers.update(add_headers)
         response = yield self.client.request(method,
                                              self.url_prefix + url,
-                                             headers,
+                                             Headers(headers),
                                              body)
         self.assertEqual(state, response.code)
         body_receiver = BodyReceiver()
@@ -119,9 +120,25 @@ class ApiTests(WorkerTests):
         yield self.trigger.check()
         response, triggers = yield self.request('GET', 'trigger/page?p=0&size=10')
         self.assertEqual(1, len(triggers["list"]))
-        self.assertEqual(0, triggers["start"])
+        self.assertEqual(0, triggers["page"])
         self.assertEqual(10, triggers["size"])
         self.assertEqual(1, triggers["total"])
+        
+        response, triggers = yield self.request('GET', 'trigger/page?p=0&size=10',
+                                                add_headers={'Cookie': ['moira_filter_tags=tag1; moira_filter_ok=true']})
+        self.assertEqual(1, len(triggers["list"]))
+        self.assertEqual(1, triggers["total"])
+        
+        response, triggers = yield self.request('GET', 'trigger/page?p=0&size=10',
+                                                add_headers={'Cookie': ['moira_filter_tags=']})
+        self.assertEqual(1, len(triggers["list"]))
+        self.assertEqual(1, triggers["total"])
+
+        response, triggers = yield self.request('GET', 'trigger/page?p=0&size=10',
+                                                add_headers={'Cookie': ['moira_filter_tags=not-exising; moira_filter_ok=true']})
+        self.assertEqual(0, len(triggers["list"]))
+        self.assertEqual(0, triggers["total"])
+        
 
     @trigger("expression-trigger")
     @inlineCallbacks

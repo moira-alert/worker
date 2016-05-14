@@ -40,6 +40,7 @@ Redis database objects:
     - KEY {21}
     - KEY {22}
     - SORTED SET {23}
+    - SET {24}
 """
 
 __docformat__ = 'reStructuredText'
@@ -72,6 +73,7 @@ TRIGGER_NEXT_PREFIX = "moira-notifier-next:{0}"
 NOTIFIER_NOTIFICATIONS = "moira-notifier-notifications"
 TAG_PREFIX = "moira-tag:{0}"
 TRIGGER_CHECK_LOCK_PREFIX = "moira-metric-check-lock:{0}"
+TRIGGER_IN_BAD_STATE = "moira-bad-state-triggers"
 
 TRIGGER_EVENTS_TTL = 3600 * 24 * 30
 
@@ -102,7 +104,8 @@ current_module.__doc__ = _doc_string.format(
     TRIGGER_THROTTLING_BEGINNING_PREFIX.format("<trigger_id>"),
     TAG_PREFIX.format("<tag>"),
     TRIGGER_CHECK_LOCK_PREFIX.format("trigger_id"),
-    TRIGGERS_CHECKS
+    TRIGGERS_CHECKS,
+    TRIGGER_IN_BAD_STATE
 )
 
 
@@ -571,6 +574,46 @@ class Db(service.Service):
         defer.returnValue((triggers, total))
 
     @defer.inlineCallbacks
+    @docstring_parameters(TRIGGERS_CHECKS)
+    def getFilteredTriggersChecksPage(self, page, size, filter_ok, filter_tags):
+        """
+        getFilteredTriggersChecksPage(self, page, size, filter_ok, filter_tags)
+
+        - Returns filtered triggers page
+
+        :param start: start position in range
+        :type start: integer
+        :param start: number of triggers
+        :type start: integer
+        :param filter_ok: use triggers set in bad state
+        :type filter_ok: boolean
+        :param filter_tags: use tag triggers set
+        :type filter_tags: list of strings
+        :rtype: json
+        """
+        filter_sets = map(lambda tag: TAG_TRIGGERS_PREFIX.format(tag), filter_tags)
+        if filter_ok:
+            filter_sets.append(TRIGGER_IN_BAD_STATE)
+        pipeline = yield self.rc.pipeline()
+        pipeline.zrevrange(TRIGGERS_CHECKS, start=0, end=-1)
+        for s in filter_sets:
+            pipeline.smembers(s)
+        triggers_lists = yield pipeline.execute_pipeline()
+        total = []
+        for id in triggers_lists[0]:
+            valid = True
+            for s in triggers_lists[1:]:
+                if id not in s:
+                    valid = False
+                    break
+            if valid:
+                total.append(id)
+
+        filtered_ids = total[page * size: (page + 1) * size]
+        triggers = yield self._getTriggersChecks(filtered_ids)
+        defer.returnValue((triggers, len(total)))
+
+    @defer.inlineCallbacks
     @docstring_parameters(TRIGGER_NEXT_PREFIX.format("<trigger_id>"))
     def getTriggerThrottling(self, trigger_id):
         """
@@ -868,6 +911,10 @@ class Db(service.Service):
         t = yield self.rc.multi()
         yield t.set(LAST_CHECK_PREFIX.format(trigger_id), json)
         yield t.zadd(TRIGGERS_CHECKS, check["score"], trigger_id)
+        if check["score"] > 0:
+            yield t.sadd(TRIGGER_IN_BAD_STATE, trigger_id)
+        else:
+            yield t.srem(TRIGGER_IN_BAD_STATE, trigger_id)
         yield t.commit()
 
     @defer.inlineCallbacks
