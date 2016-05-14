@@ -716,12 +716,12 @@ class DataTests(WorkerTests):
         yield self.db.sendMetric("metric", "metric", self.now + 60, 1)
         yield self.trigger.check(now=self.now + 60, cache_ttl=0)
         check = yield self.db.getTriggerLastCheck(self.trigger.id)
-        self.assertEquals(50, check["score"])
+        self.assertEquals(1, check["score"])
 
         yield self.db.sendMetric("metric", "metric", self.now + 120, 2)
         yield self.trigger.check(now=self.now + 120, cache_ttl=0)
         check = yield self.db.getTriggerLastCheck(self.trigger.id)
-        self.assertEquals(5000, check["score"])
+        self.assertEquals(100, check["score"])
 
     @trigger('test-late-metric')
     @inlineCallbacks
