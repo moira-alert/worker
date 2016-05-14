@@ -117,7 +117,7 @@ class ApiTests(WorkerTests):
                                              "warn_value": "1e-7", "error_value": 50, "tags": ["tag1", "tag2"] }',
                                                     )
         yield self.trigger.check()
-        response, triggers = yield self.request('GET', 'trigger/page')
+        response, triggers = yield self.request('GET', 'trigger/page?p=0&size=10')
         self.assertEqual(1, len(triggers["list"]))
         self.assertEqual(0, triggers["start"])
         self.assertEqual(10, triggers["size"])

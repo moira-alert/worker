@@ -123,9 +123,9 @@ class Page(RedisResouce):
     @delayed
     @defer.inlineCallbacks
     def render_GET(self, request):
-        start = request.args.get("start")
+        start = request.args.get("p")
         size = request.args.get("size")
-        start = 0 if start is None else start[0]
-        size = 10 if size is None else size[0]
-        triggers, total = yield self.db.getTriggersChecksPage(start, size)
+        start = 0 if start is None else int(start[0])
+        size = 10 if size is None else int(size[0])
+        triggers, total = yield self.db.getTriggersChecksPage(start * size, size - 1)
         self.write_json(request, {"list": triggers, "start": start, "size": size, "total": total})
