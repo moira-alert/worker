@@ -127,5 +127,5 @@ class Page(RedisResouce):
         size = request.args.get("size")
         start = 0 if start is None else start[0]
         size = 10 if size is None else size[0]
-        result = yield self.db.getTriggersChecksPage(start, size)
-        self.write_json(request, {"list": result, "start": start, "size": size})
+        triggers, total = yield self.db.getTriggersChecksPage(start, size)
+        self.write_json(request, {"list": triggers, "start": start, "size": size, "total": total})

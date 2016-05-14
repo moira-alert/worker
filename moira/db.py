@@ -563,9 +563,12 @@ class Db(service.Service):
         :type start: integer
         :rtype: json
         """
-        triggers_ids = yield self.rc.zrevrange(TRIGGERS_CHECKS, start=start, end=(start + size))
+        pipeline = yield self.rc.pipeline()
+        pipeline.zrevrange(TRIGGERS_CHECKS, start=start, end=(start + size))
+        pipeline.zcard(TRIGGERS_CHECKS)
+        triggers_ids, total = yield pipeline.execute_pipeline()
         triggers = yield self._getTriggersChecks(triggers_ids)
-        defer.returnValue(triggers)
+        defer.returnValue((triggers, total))
 
     @defer.inlineCallbacks
     @docstring_parameters(TRIGGER_NEXT_PREFIX.format("<trigger_id>"))

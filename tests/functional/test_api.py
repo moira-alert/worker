@@ -121,6 +121,7 @@ class ApiTests(WorkerTests):
         self.assertEqual(1, len(triggers["list"]))
         self.assertEqual(0, triggers["start"])
         self.assertEqual(10, triggers["size"])
+        self.assertEqual(1, triggers["total"])
 
     @trigger("expression-trigger")
     @inlineCallbacks
