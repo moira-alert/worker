@@ -37,6 +37,7 @@ class Trigger(object):
                 "state": state.NODATA,
                 "timestamp": begin
             }
+        if self.last_check.get("score") is None:
             self.update_score = True
         defer.returnValue(True)
 
