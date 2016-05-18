@@ -30,13 +30,15 @@ class Trigger(object):
         self.ttl = self.struct.get("ttl")
         self.ttl_state = self.struct.get("ttl_state", state.NODATA)
         self.last_check = yield self.db.getTriggerLastCheck(self.id)
+        begin = (fromTime or now) - 3600
         if self.last_check is None:
-            begin = (fromTime or now) - 3600
             self.last_check = {
                 "metrics": {},
                 "state": state.NODATA,
                 "timestamp": begin
             }
+        if self.last_check.get("timestamp") is None:
+            self.last_check["timestamp"] = begin
         if self.last_check.get("score") is None:
             self.update_score = True
         defer.returnValue(True)

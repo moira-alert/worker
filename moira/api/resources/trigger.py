@@ -115,6 +115,7 @@ class Triggers(RedisResouce):
         trigger_id = str(uuid.uuid4())
         yield self.save_trigger(request, trigger_id, "trigger created")
 
+
 class Page(RedisResouce):
 
     def __init__(self, db):

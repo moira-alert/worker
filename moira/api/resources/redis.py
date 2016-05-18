@@ -3,6 +3,7 @@ from twisted.internet import defer
 from twisted.web.resource import Resource
 
 from moira.api.request import check_trigger, check_json
+from moira.checker import state
 
 
 class RedisResouce(Resource):
@@ -33,7 +34,15 @@ class RedisResouce(Resource):
 
         if last_check:
             last_check['metrics'] = {}
-            yield self.db.setTriggerLastCheck(trigger_id, last_check)
+        else:
+            last_check = {
+                "metrics": {},
+                "state": state.NODATA,
+                "score": 0
+            }
+            print last_check
+
+        yield self.db.setTriggerLastCheck(trigger_id, last_check)
 
         yield self.db.delTriggerCheckLock(trigger_id)
 
