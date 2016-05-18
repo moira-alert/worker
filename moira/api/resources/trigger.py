@@ -1,4 +1,5 @@
 import uuid
+from urllib import unquote
 
 from twisted.internet import defer
 from twisted.web import http
@@ -95,6 +96,7 @@ class Triggers(RedisResouce):
 
     def __init__(self, db):
         RedisResouce.__init__(self, db)
+        self.putChild("page", Page(db))
 
     def getChild(self, path, request):
         if not path:
@@ -105,10 +107,32 @@ class Triggers(RedisResouce):
     @defer.inlineCallbacks
     def render_GET(self, request):
         result = yield self.db.getTriggersChecks()
-        self.write_json(request, result)
+        self.write_json(request, {"list": result})
 
     @delayed
     @defer.inlineCallbacks
     def render_PUT(self, request):
         trigger_id = str(uuid.uuid4())
         yield self.save_trigger(request, trigger_id, "trigger created")
+
+class Page(RedisResouce):
+
+    def __init__(self, db):
+        RedisResouce.__init__(self, db)
+
+    @delayed
+    @defer.inlineCallbacks
+    def render_GET(self, request):
+        filter_ok = request.getCookie('moira_filter_ok')
+        filter_tags = request.getCookie('moira_filter_tags')
+        page = request.args.get("p")
+        size = request.args.get("size")
+        page = 0 if page is None else int(page[0])
+        size = 10 if size is None else int(size[0])
+        filter_ok = False if filter_ok is None else filter_ok == 'true'
+        filter_tags = [] if not filter_tags else unquote(filter_tags).split(',')
+        if not filter_ok and len(filter_tags) == 0:
+            triggers, total = yield self.db.getTriggersChecksPage(page * size, size - 1)
+        else:
+            triggers, total = yield self.db.getFilteredTriggersChecksPage(page, size, filter_ok, filter_tags)
+        self.write_json(request, {"list": triggers, "page": page, "size": size, "total": total})

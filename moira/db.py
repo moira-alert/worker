@@ -22,7 +22,7 @@ Redis database objects:
     - KEY {3}
     - LIST {4}
     - LIST {5}
-    - ZRANGE {6}
+    - SORTED SET {6}
     - KEY {7}
     - SET {8}
     - SET {9}
@@ -35,10 +35,12 @@ Redis database objects:
     - KEY {16}
     - KEY {17}
     - SET {18}
-    - ZRANGE {19}
+    - SORTED SET {19}
     - SET {20}
     - KEY {21}
     - KEY {22}
+    - SORTED SET {23}
+    - SET {24}
 """
 
 __docformat__ = 'reStructuredText'
@@ -50,6 +52,7 @@ PATTERN_TRIGGERS_PREFIX = "moira-pattern-triggers:{0}"
 TRIGGER_PREFIX = "moira-trigger:{0}"
 EVENTS = "moira-trigger-events"
 EVENTS_UI = "moira-trigger-events-ui"
+TRIGGERS_CHECKS = "moira-triggers-checks"
 METRIC_OLD_PREFIX = "moira-metric:{0}"
 METRIC_PREFIX = "moira-metric-data:{0}"
 METRIC_RETENTION_PREFIX = "moira-metric-retention:{0}"
@@ -70,6 +73,7 @@ TRIGGER_NEXT_PREFIX = "moira-notifier-next:{0}"
 NOTIFIER_NOTIFICATIONS = "moira-notifier-notifications"
 TAG_PREFIX = "moira-tag:{0}"
 TRIGGER_CHECK_LOCK_PREFIX = "moira-metric-check-lock:{0}"
+TRIGGER_IN_BAD_STATE = "moira-bad-state-triggers"
 
 TRIGGER_EVENTS_TTL = 3600 * 24 * 30
 
@@ -99,7 +103,9 @@ current_module.__doc__ = _doc_string.format(
     TRIGGER_EVENTS.format("<trigger_id>"),
     TRIGGER_THROTTLING_BEGINNING_PREFIX.format("<trigger_id>"),
     TAG_PREFIX.format("<tag>"),
-    TRIGGER_CHECK_LOCK_PREFIX.format("trigger_id")
+    TRIGGER_CHECK_LOCK_PREFIX.format("trigger_id"),
+    TRIGGERS_CHECKS,
+    TRIGGER_IN_BAD_STATE
 )
 
 
@@ -513,15 +519,7 @@ class Db(service.Service):
         defer.returnValue((json, trigger))
 
     @defer.inlineCallbacks
-    def getTriggersChecks(self):
-        """
-        getTriggersChecks(self)
-
-        - Returns all triggers with it check
-
-        :rtype: json
-        """
-        triggers_ids = list((yield self.getTriggers()))
+    def _getTriggersChecks(self, triggers_ids):
         triggers = []
         pipeline = yield self.rc.pipeline()
         for trigger_id in triggers_ids:
@@ -539,7 +537,81 @@ class Db(service.Service):
             trigger["last_check"] = None if last_check is None else anyjson.deserialize(last_check)
             trigger["throttling"] = long(throttling) if throttling and time.time() < long(throttling) else 0
             triggers.append(trigger)
-        defer.returnValue({"list": triggers})
+        defer.returnValue(triggers)
+
+    @defer.inlineCallbacks
+    def getTriggersChecks(self):
+        """
+        getTriggersChecks(self)
+
+        - Returns all triggers with it check
+
+        :rtype: json
+        """
+        triggers_ids = list((yield self.getTriggers()))
+        triggers = yield self._getTriggersChecks(triggers_ids)
+        defer.returnValue(triggers)
+
+    @defer.inlineCallbacks
+    @docstring_parameters(TRIGGERS_CHECKS)
+    def getTriggersChecksPage(self, start, size):
+        """
+        getTriggersChecksPage(self, start, size)
+
+        - Returns triggers range from sorted set {0}
+
+        :param start: start position in range
+        :type start: integer
+        :param start: number of triggers
+        :type start: integer
+        :rtype: json
+        """
+        pipeline = yield self.rc.pipeline()
+        pipeline.zrevrange(TRIGGERS_CHECKS, start=start, end=(start + size))
+        pipeline.zcard(TRIGGERS_CHECKS)
+        triggers_ids, total = yield pipeline.execute_pipeline()
+        triggers = yield self._getTriggersChecks(triggers_ids)
+        defer.returnValue((triggers, total))
+
+    @defer.inlineCallbacks
+    @docstring_parameters(TRIGGERS_CHECKS)
+    def getFilteredTriggersChecksPage(self, page, size, filter_ok, filter_tags):
+        """
+        getFilteredTriggersChecksPage(self, page, size, filter_ok, filter_tags)
+
+        - Returns filtered triggers page
+
+        :param start: start position in range
+        :type start: integer
+        :param start: number of triggers
+        :type start: integer
+        :param filter_ok: use triggers set in bad state
+        :type filter_ok: boolean
+        :param filter_tags: use tag triggers set
+        :type filter_tags: list of strings
+        :rtype: json
+        """
+        filter_sets = map(lambda tag: TAG_TRIGGERS_PREFIX.format(tag), filter_tags)
+        if filter_ok:
+            filter_sets.append(TRIGGER_IN_BAD_STATE)
+        pipeline = yield self.rc.pipeline()
+        pipeline.zrevrange(TRIGGERS_CHECKS, start=0, end=-1)
+        for s in filter_sets:
+            pipeline.smembers(s)
+        triggers_lists = yield pipeline.execute_pipeline()
+        total = []
+        for id in triggers_lists[0]:
+            valid = True
+            for s in triggers_lists[1:]:
+                if id not in s:
+                    valid = False
+                    break
+            if valid:
+                total.append(id)
+
+        filtered_ids = total[page * size: (page + 1) * size]
+        triggers = yield self._getTriggersChecks(filtered_ids)
+        defer.returnValue((triggers, len(total)))
 
     @defer.inlineCallbacks
     @docstring_parameters(TRIGGER_NEXT_PREFIX.format("<trigger_id>"))
@@ -835,7 +907,15 @@ class Db(service.Service):
         :param check: trigger checking result
         :type check: json dict
         """
-        yield self.rc.set(LAST_CHECK_PREFIX.format(trigger_id), anyjson.serialize(check))
+        json = anyjson.serialize(check)
+        t = yield self.rc.multi()
+        yield t.set(LAST_CHECK_PREFIX.format(trigger_id), json)
+        yield t.zadd(TRIGGERS_CHECKS, check["score"], trigger_id)
+        if check["score"] > 0:
+            yield t.sadd(TRIGGER_IN_BAD_STATE, trigger_id)
+        else:
+            yield t.srem(TRIGGER_IN_BAD_STATE, trigger_id)
+        yield t.commit()
 
     @defer.inlineCallbacks
     @docstring_parameters(TRIGGER_CHECK_LOCK_PREFIX.format("<trigger_id>"))

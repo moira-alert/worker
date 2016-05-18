@@ -700,3 +700,51 @@ class DataTests(WorkerTests):
         day_begin = self.now - self.now % (3600 * 24)
         for h in range(0, 24):
             self.assertTrue(self.trigger.isSchedAllows(day_begin + 3600 * h))
+
+    @trigger('test-trigger-score')
+    @inlineCallbacks
+    def testTriggerScore(self):
+        yield self.sendTrigger('{"name": "test trigger", "targets": [" \
+                               metric"], "warn_value": 1, "error_value": 2}')
+
+        yield self.db.addPatternMetric("metric", "metric")
+        yield self.db.sendMetric("metric", "metric", self.now, 0)
+        yield self.trigger.check(now=self.now, cache_ttl=0)
+        check = yield self.db.getTriggerLastCheck(self.trigger.id)
+        self.assertEquals(0, check["score"])
+
+        yield self.db.sendMetric("metric", "metric", self.now + 60, 1)
+        yield self.trigger.check(now=self.now + 60, cache_ttl=0)
+        check = yield self.db.getTriggerLastCheck(self.trigger.id)
+        self.assertEquals(1, check["score"])
+
+        yield self.db.sendMetric("metric", "metric", self.now + 120, 2)
+        yield self.trigger.check(now=self.now + 120, cache_ttl=0)
+        check = yield self.db.getTriggerLastCheck(self.trigger.id)
+        self.assertEquals(100, check["score"])
+
+    @trigger('test-late-metric')
+    @inlineCallbacks
+    def testLateMetrics(self):
+        yield self.sendTrigger('{"name": "test trigger", "targets": [" \
+                               metric"], "warn_value": 1, "error_value": 2}')
+
+        yield self.db.addPatternMetric("metric", "metric")
+        yield self.db.sendMetric("metric", "metric", self.now, 0)
+        yield self.trigger.check(now=self.now, cache_ttl=0)
+        yield self.assert_trigger_metric("metric", 0, state.OK)
+
+        yield self.db.sendMetric("metric", "metric", self.now - 60, 2)
+        yield self.trigger.check(now=self.now + 60, cache_ttl=0)
+        yield self.assert_trigger_metric("metric", 0, state.OK)
+
+        yield self.db.sendMetric("metric", "metric", self.now + 120, 0)
+        yield self.trigger.check(now=self.now + 120, cache_ttl=0)
+        
+        yield self.db.sendMetric("metric", "metric", self.now + 60, 1)
+        yield self.trigger.check(now=self.now + 180, cache_ttl=0)
+        yield self.assert_trigger_metric("metric", 0, state.OK)
+
+        events = yield self.db.getEvents()
+        self.assertEquals(len(events), 3)
+        self.assertEquals(events[1]["state"], state.WARN)
