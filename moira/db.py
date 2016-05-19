@@ -7,7 +7,7 @@ from uuid import uuid4
 import anyjson
 import txredisapi as redis
 from twisted.application import service
-from twisted.internet import defer
+from twisted.internet import defer, task
 
 from moira import config
 from moira.cache import cache
