@@ -45,11 +45,15 @@ def trigger(trigger, fromTime, now, cache_ttl):
 
             for t_series in time_series.values():
                 for tN in t_series:
-                    check["metrics"][tN.name] = tN.last_state.copy()
+                    if not tN.stub:
+                        check["metrics"][tN.name] = tN.last_state.copy()
 
             for t1 in time_series[1]:
 
-                metric_state = check["metrics"][t1.name]
+                metric_state = check["metrics"].get(t1.name)
+                if not metric_state:
+                    continue
+
                 checkpoint = max(t1.last_state["timestamp"] - config.CHECKPOINT_GAP,
                                  metric_state.get("event_timestamp", 0))
 

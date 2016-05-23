@@ -39,6 +39,7 @@ class TimeSeries(list):
         self.consolidationFunc = consolidate
         self.valuesPerPoint = 1
         self.options = {}
+        self.stub = False
 
     def __iter__(self):
         if self.valuesPerPoint > 1:
@@ -120,6 +121,7 @@ def fetchData(requestContext, pathExpr):
     if len(metrics) == 0:
         series = TimeSeries(pathExpr, startTime, startTime, 60, [])
         series.pathExpression = pathExpr
+        series.stub = True
         seriesList.append(series)
     else:
         first_metric = metrics[0]
