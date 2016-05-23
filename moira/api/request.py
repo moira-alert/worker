@@ -42,8 +42,6 @@ def resolve_patterns(request, expression_values):
         target_time_series = yield evaluateTarget(context, target)
         target_name = "t%s" % target_num
         expression_values[target_name] = 42
-        if target_time_series and target_time_series[0]:
-            expression_values[target_name] = target_time_series[0][-1]
         target_num += 1
         for pattern, resolve in context['graphite_patterns'].iteritems():
             for r in resolve:
