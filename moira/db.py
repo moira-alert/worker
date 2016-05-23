@@ -41,6 +41,7 @@ Redis database objects:
     - KEY {22}
     - SORTED SET {23}
     - SET {24}
+    - KEY {25}
 """
 
 __docformat__ = 'reStructuredText'
@@ -74,6 +75,7 @@ NOTIFIER_NOTIFICATIONS = "moira-notifier-notifications"
 TAG_PREFIX = "moira-tag:{0}"
 TRIGGER_CHECK_LOCK_PREFIX = "moira-metric-check-lock:{0}"
 TRIGGER_IN_BAD_STATE = "moira-bad-state-triggers"
+CHECKS_COUNTER = "moira-selfstate:checks-counter"
 
 TRIGGER_EVENTS_TTL = 3600 * 24 * 30
 
@@ -105,7 +107,8 @@ current_module.__doc__ = _doc_string.format(
     TAG_PREFIX.format("<tag>"),
     TRIGGER_CHECK_LOCK_PREFIX.format("trigger_id"),
     TRIGGERS_CHECKS,
-    TRIGGER_IN_BAD_STATE
+    TRIGGER_IN_BAD_STATE,
+    CHECKS_COUNTER
 )
 
 
@@ -911,6 +914,7 @@ class Db(service.Service):
         t = yield self.rc.multi()
         yield t.set(LAST_CHECK_PREFIX.format(trigger_id), json)
         yield t.zadd(TRIGGERS_CHECKS, check["score"], trigger_id)
+        yield t.incr(CHECKS_COUNTER)
         if check["score"] > 0:
             yield t.sadd(TRIGGER_IN_BAD_STATE, trigger_id)
         else:
