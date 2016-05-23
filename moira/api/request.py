@@ -39,7 +39,7 @@ def resolve_patterns(request, expression_values):
     resolved = set()
     target_num = 1
     for target in request.body_json["targets"]:
-        target_time_series = yield evaluateTarget(context, target)
+        yield evaluateTarget(context, target)
         target_name = "t%s" % target_num
         expression_values[target_name] = 42
         target_num += 1
