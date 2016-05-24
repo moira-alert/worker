@@ -23,8 +23,7 @@ setup(
     ],
     entry_points={
         'console_scripts': ['moira-api = moira.api.server:run',
-                            'moira-checker = moira.checker.server:run',
-                            'moira-update = moira.tools.converter:run'],
+                            'moira-checker = moira.checker.server:run'],
     },
     install_requires=required,
 )

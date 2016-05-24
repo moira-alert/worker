@@ -1,9 +1,9 @@
-include         LICENSE
+include         LICENSE.md
 include         README.md
 include         MANIFEST.in
 include         version.txt
 include         requirements.txt
-include 	pkg/moira-api.service
-include 	pkg/moira-checker.service
-include 	pkg/worker.yml
-include 	pkg/postinst
+include         pkg/moira-api.service
+include         pkg/moira-checker.service
+include         pkg/worker.yml
+include         pkg/postinst

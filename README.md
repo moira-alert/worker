@@ -11,15 +11,6 @@ Documentation for the entire Moira project is available on [Read the Docs][readt
 
 If you have any questions, you can ask us on [Gitter][gitter].
 
-## Update from 1.0.x to 1.1
-
-Version 1.1 change metric store values format.
-
-1. Stop moira-checker, moira-api v1.0.x
-2. Update moira-cache to version 1.1 and run new version
-3. Run moira-update. It will convert old value to new format
-4. Update moira-checker, moira-api to version 1.1 and run new version
-
 ## Thanks
 
 ![SKB Kontur](https://kontur.ru/theme/ver-1652188951/common/images/logo_english.png)
