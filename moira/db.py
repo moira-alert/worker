@@ -913,7 +913,7 @@ class Db(service.Service):
         json = anyjson.serialize(check)
         t = yield self.rc.multi()
         yield t.set(LAST_CHECK_PREFIX.format(trigger_id), json)
-        yield t.zadd(TRIGGERS_CHECKS, check["score"], trigger_id)
+        yield t.zadd(TRIGGERS_CHECKS, check.get("score", 0), trigger_id)
         yield t.incr(CHECKS_COUNTER)
         if check["score"] > 0:
             yield t.sadd(TRIGGER_IN_BAD_STATE, trigger_id)

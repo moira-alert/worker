@@ -46,7 +46,7 @@ ARGS = None
 def get_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('-c', help='path to configuration file (default: %s)' % (CONFIG_PATH))
-    parser.add_argument('-l', help='path to log directory (default: %s)' % (LOG_DIRECTORY) )
+    parser.add_argument('-l', help='path to log directory (default: %s)' % (LOG_DIRECTORY))
     parser.add_argument('-port', help='listening port (default: %s)' % (HTTP_PORT), type=int)
     parser.add_argument('-t', help='check single trigger by id and exit')
     parser.add_argument('-n', help='checker number', type=int)
@@ -99,4 +99,3 @@ def read():
         LOG_DIRECTORY = args.l
     if args.port:
         HTTP_PORT = args.port
-
