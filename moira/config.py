@@ -45,9 +45,9 @@ ARGS = None
 
 def get_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-c', help='path to configuration file', default="/etc/moira/config.yml")
-    parser.add_argument('-l', help='path to log directory', default="stdout")
-    parser.add_argument('-port', help='listening port', default=8081, type=int)
+    parser.add_argument('-c', help='path to configuration file (default: %s)' % (CONFIG_PATH))
+    parser.add_argument('-l', help='path to log directory (default: %s)' % (LOG_DIRECTORY) )
+    parser.add_argument('-port', help='listening port (default: %s)' % (HTTP_PORT), type=int)
     parser.add_argument('-t', help='check single trigger by id and exit')
     parser.add_argument('-n', help='checker number', type=int)
     return parser
@@ -72,9 +72,8 @@ def read():
     args = parser.parse_args()
 
     ARGS = args
-    CONFIG_PATH = args.c
-    HTTP_PORT = args.port
-    LOG_DIRECTORY = args.l
+    if args.c:
+        CONFIG_PATH = args.c
 
     if os.path.exists(CONFIG_PATH):
         with open(CONFIG_PATH, 'r') as yml:
@@ -95,3 +94,9 @@ def read():
             CHECK_INTERVAL = cfg['checker'].get('check_interval', 5)
             METRICS_TTL = cfg['checker'].get('metrics_ttl', 3600)
             STOP_CHECKING_INTERVAL = cfg['checker'].get('stop_checking_interval', 30)
+
+    if args.l:
+        LOG_DIRECTORY = args.l
+    if args.port:
+        HTTP_PORT = args.port
+
