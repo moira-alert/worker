@@ -7,7 +7,7 @@ from uuid import uuid4
 import anyjson
 import txredisapi as redis
 from twisted.application import service
-from twisted.internet import defer, task
+from twisted.internet import defer, task, reactor
 
 from moira import config
 from moira.cache import cache
@@ -915,7 +915,7 @@ class Db(service.Service):
         yield t.set(LAST_CHECK_PREFIX.format(trigger_id), json)
         yield t.zadd(TRIGGERS_CHECKS, check.get("score", 0), trigger_id)
         yield t.incr(CHECKS_COUNTER)
-        if check["score"] > 0:
+        if check.get("score", 0) > 0:
             yield t.sadd(TRIGGER_IN_BAD_STATE, trigger_id)
         else:
             yield t.srem(TRIGGER_IN_BAD_STATE, trigger_id)

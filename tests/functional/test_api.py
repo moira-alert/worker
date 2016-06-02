@@ -110,6 +110,18 @@ class ApiTests(WorkerTests):
         response, triggers = yield self.request('GET', 'trigger')
         self.assertEqual(1, len(triggers["list"]))
 
+    @trigger("trigger-update")
+    @inlineCallbacks
+    def testTriggerUpdate(self):
+        response, body = yield self.request('PUT', 'trigger/{0}'.format(self.trigger.id),
+                                            '{"name": "test trigger", "targets": ["sumSeries(*)"], \
+                                             "warn_value": "1", "error_value": 50, "tags": ["tag1", "tag2"] }',
+                                            )
+        response, body = yield self.request('PUT', 'trigger/{0}'.format(self.trigger.id),
+                                            '{"name": "test trigger", "targets": ["sumSeries(*)"], \
+                                             "warn_value": "1", "error_value": 50, "tags": ["tag1"] }',
+                                            )
+
     @trigger("good-trigger")
     @inlineCallbacks
     def testTriggersPaging(self):
