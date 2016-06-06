@@ -73,15 +73,18 @@ class ApiTests(WorkerTests):
                                             '{"targets": ["aliasByNode(DevOps.*.Metric, 1)"], \
                                              "warn_value": 1, "error_value": 2}')
         yield self.db.sendMetric('DevOps.*.Metric', 'DevOps.Node1.Metric', self.now - 60, 0)
+        yield self.db.sendMetric('DevOps.*.Metric', 'DevOps.Node2.Metric', self.now - 60, 0)
         yield self.trigger.check()
+        yield self.db.delPatternMetrics('DevOps.*.Metric')
         check = yield self.db.getTriggerLastCheck(self.trigger.id)
         self.assertTrue('Node1' in check['metrics'])
+        yield self.db.sendMetric('DevOps.*.Metric', 'DevOps.Node1.Metric', self.now, 0)
         response, body = yield self.request('PUT', 'trigger/{0}'.format(self.trigger.id),
-                                            '{"targets": ["aliasByNode(DevOps.*.Metric, 2)"], \
+                                            '{"targets": ["aliasByNode(DevOps.*.Metric, 1)"], \
                                              "warn_value": 1, "error_value": 2}')
         check = yield self.db.getTriggerLastCheck(self.trigger.id)
-        self.assertEqual({}, check.get('metrics'))
-
+        self.assertTrue('Node1' in check['metrics'])
+        self.assertFalse('Node2' in check['metrics'])
 
     @trigger("delete-tag")
     @inlineCallbacks

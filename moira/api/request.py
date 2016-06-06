@@ -35,12 +35,15 @@ def check_json(f):
 @defer.inlineCallbacks
 def resolve_patterns(request, expression_values):
     now = int(time())
-    context = createRequestContext(str(now - 10), str(now))
+    context = createRequestContext(str(now - 600), str(now))
     resolved = set()
     target_num = 1
+    context['time_series_names'] = set()
     for target in request.body_json["targets"]:
-        yield evaluateTarget(context, target)
+        time_series = yield evaluateTarget(context, target)
         target_name = "t%s" % target_num
+        for ts in time_series:
+            context['time_series_names'].add(ts.name)
         expression_values[target_name] = 42
         target_num += 1
         for pattern, resolve in context['graphite_patterns'].iteritems():
@@ -49,6 +52,7 @@ def resolve_patterns(request, expression_values):
                     resolved.add(r)
     request.body_json["patterns"] = [pattern for pattern in context['graphite_patterns']
                                      if pattern not in resolved]
+    request.context = context
 
 
 def check_trigger(f):

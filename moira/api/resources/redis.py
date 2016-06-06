@@ -29,18 +29,17 @@ class RedisResouce(Resource):
         _, existing = yield self.db.getTrigger(trigger_id)
 
         yield self.db.accuireTriggerCheckLock(trigger_id, 10)
-
         last_check = yield self.db.getTriggerLastCheck(trigger_id)
-
         if last_check:
-            last_check['metrics'] = {}
+            for metric in list(last_check.get('metrics', {})):
+                if metric not in request.context['time_series_names']:
+                    del last_check['metrics'][metric]
         else:
             last_check = {
                 "metrics": {},
                 "state": state.NODATA,
                 "score": 0
             }
-            print last_check
 
         yield self.db.setTriggerLastCheck(trigger_id, last_check)
 
