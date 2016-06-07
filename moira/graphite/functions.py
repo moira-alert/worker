@@ -1622,9 +1622,10 @@ def aliasByNode(requestContext, seriesList, *nodes):
     if isinstance(nodes, int):
         nodes = [nodes]
     for series in seriesList:
+        
         metric_pieces = re.search(
             '(?:.*\()?(?P<name>[-\w*\.]+)(?:,|\)?.*)?',
-            series.name).groups()[0].split('.')
+            re.sub('{(\w+\,)*\w+}', 'UNKNOWN', series.name)).groups()[0].split('.')
         series.name = '.'.join(metric_pieces[n] for n in nodes)
     returnValue(seriesList)
 
