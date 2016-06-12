@@ -67,8 +67,8 @@ class DataTests(WorkerTests):
         yield self.db.sendMetric("m2", "m2", self.now - 1, 0)
         yield self.trigger.check()
         self.flushLoggedErrors()
-        events = yield self.db.getEvents()
-        self.assertEquals(1, len(events))
+        events, total = yield self.db.getEvents()
+        self.assertEquals(1, total)
         self.assertEquals(events[0]['state'], state.EXCEPTION)
 
     @trigger("test-trigger-exception-multi-series")
@@ -81,8 +81,8 @@ class DataTests(WorkerTests):
         yield self.db.sendMetric("m2*", "m2.2", self.now - 1, 2)
         yield self.trigger.check()
         self.flushLoggedErrors()
-        events = yield self.db.getEvents()
-        self.assertEquals(1, len(events))
+        events, total = yield self.db.getEvents()
+        self.assertEquals(1, total)
         self.assertEquals(events[0]['state'], state.EXCEPTION)
 
     @trigger('test-trigger-patterns')
@@ -354,8 +354,8 @@ class DataTests(WorkerTests):
         yield self.protocol.messageReceived(None, "moira-func-test", '{"pattern":"' + metric +
                                             '", "metric":"' + metric + '"}', nocache=True)
         yield self.trigger.check(now=self.now + 1)
-        events = yield self.db.getEvents()
-        self.assertEquals(len(events), 2)
+        events, total = yield self.db.getEvents()
+        self.assertEquals(total, 2)
         self.assertEquals(events[0]["state"], state.OK)
         self.assertEquals(events[1]["state"], state.ERROR)
 
@@ -370,8 +370,8 @@ class DataTests(WorkerTests):
         yield self.trigger.check()
         yield self.trigger.check()
         yield self.trigger.check()
-        events = yield self.db.getEvents()
-        self.assertEquals(len(events), 1)
+        events, total = yield self.db.getEvents()
+        self.assertEquals(total, 1)
         self.assertEquals(events[0]["state"], state.ERROR)
 
     @trigger('test-events3')
@@ -388,8 +388,8 @@ class DataTests(WorkerTests):
         yield self.trigger.check(now=self.now + 601)
         yield self.trigger.check(now=self.now + 602)
         self.assert_trigger_metric(metric, None, state.OK)
-        events = yield self.db.getEvents()
-        self.assertEquals(len(events), 2)
+        events, total = yield self.db.getEvents()
+        self.assertEquals(total, 2)
         self.assertEquals(events[0]["state"], state.OK)
         self.assertEquals(events[0]["metric"], metric)
         self.assertNotIn("value", events[0])
@@ -425,8 +425,8 @@ class DataTests(WorkerTests):
         yield self.trigger.check(now=1444644000)
         self.assert_trigger_metric(metric, 10, state.ERROR)
 
-        events = yield self.db.getEvents()
-        self.assertEquals(len(events), 1)
+        events, total = yield self.db.getEvents()
+        self.assertEquals(total, 1)
 
         # generate missed event
         yield self.db.sendMetric(metric, metric, 1444730400, 10)  # Tuesday @ 10:00am (UTC)
@@ -438,8 +438,8 @@ class DataTests(WorkerTests):
         yield self.trigger.check(now=1444730460)
         self.assert_trigger_metric(metric, 11, state.ERROR)
 
-        events = yield self.db.getEvents()
-        self.assertEquals(len(events), 2)
+        events, total = yield self.db.getEvents()
+        self.assertEquals(total, 2)
 
     @trigger('test-ttl')
     @inlineCallbacks
@@ -456,8 +456,8 @@ class DataTests(WorkerTests):
         yield self.trigger.check(now=self.now + 60)
         yield self.assert_trigger_metric(metric, 10, state.OK)
         yield self.trigger.check(now=self.now + 120)
-        events = yield self.db.getEvents()
-        self.assertEquals(len(events), 3)
+        events, total = yield self.db.getEvents()
+        self.assertEquals(total, 3)
         self.assertEquals(events[0]["state"], state.OK)
         self.assertEquals(events[1]["state"], state.NODATA)
         self.assertEquals(events[2]["state"], state.ERROR)
@@ -524,8 +524,8 @@ class DataTests(WorkerTests):
         yield self.db.sendMetric(metric, metric, self.now + 1200, 20)
         yield self.trigger.check(now=self.now + 1200)
         yield self.assert_trigger_metric(metric, 20, state.OK)
-        events = yield self.db.getEvents()
-        self.assertEquals(len(events), 1)
+        events, total = yield self.db.getEvents()
+        self.assertEquals(total, 1)
         self.assertEquals(events[0]["state"], state.OK)
 
     @trigger('test-nodata-remind')
@@ -540,8 +540,8 @@ class DataTests(WorkerTests):
         yield self.assert_trigger_metric(metric, None, state.NODATA)
         yield self.trigger.check(now=self.now + 86400)
         yield self.trigger.check(now=self.now + 86460)
-        events = yield self.db.getEvents()
-        self.assertEquals(len(events), 3)
+        events, total = yield self.db.getEvents()
+        self.assertEquals(total, 3)
         self.assertEquals(events[0]["state"], state.NODATA)
         self.assertEquals(events[0]["old_state"], state.NODATA)
 
@@ -562,8 +562,8 @@ class DataTests(WorkerTests):
         yield self.db.sendMetric(metric, metric, self.now + 88520, 100)
         yield self.db.sendMetric(metric, metric, self.now + 88580, 100)
         yield self.trigger.check(now=self.now + 88580)
-        events = yield self.db.getEvents()
-        self.assertEquals(len(events), 2)
+        events, total = yield self.db.getEvents()
+        self.assertEquals(total, 2)
         self.assertEquals(events[0]["state"], state.ERROR)
 
     @trigger('test-nodata-deletion')
@@ -748,6 +748,6 @@ class DataTests(WorkerTests):
         yield self.trigger.check(now=self.now + 180, cache_ttl=0)
         yield self.assert_trigger_metric("metric", 0, state.OK)
 
-        events = yield self.db.getEvents()
-        self.assertEquals(len(events), 3)
+        events, total = yield self.db.getEvents()
+        self.assertEquals(total, 3)
         self.assertEquals(events[1]["state"], state.WARN)

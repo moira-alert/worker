@@ -1172,13 +1172,14 @@ class Db(service.Service):
         """
         if trigger_id is None:
             events = yield self.rc.lrange(EVENTS_UI, 0, -1)
+            total = len(events)
         else:
             pipeline = yield self.rc.pipeline()
             key = TRIGGER_EVENTS.format(trigger_id)
             pipeline.zrevrange(key, start=start, end=(start + size))
             pipeline.zcard(key)
             events, total = yield pipeline.execute_pipeline()
-        defer.returnValue([anyjson.deserialize(e) for e in events])
+        defer.returnValue(([anyjson.deserialize(e) for e in events], total))
 
     @defer.inlineCallbacks
     def flush(self):

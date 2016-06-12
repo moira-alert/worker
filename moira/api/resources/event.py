@@ -17,8 +17,8 @@ class Events(RedisResouce):
         size = request.args.get("size")
         page = 0 if page is None else int(page[0])
         size = 100 if size is None else int(size[0])
-        events = yield self.db.getEvents(trigger_id=self.trigger_id, start=page * size, size=size - 1)
-        self.write_json(request, {"list": events})
+        events, total = yield self.db.getEvents(trigger_id=self.trigger_id, start=page * size, size=size - 1)
+        self.write_json(request, {"list": events, "page": page, "size": size, "total": total})
 
     def getChild(self, path, request):
         if not path:
