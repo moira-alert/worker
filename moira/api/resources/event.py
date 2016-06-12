@@ -13,7 +13,11 @@ class Events(RedisResouce):
     @delayed
     @defer.inlineCallbacks
     def render_GET(self, request):
-        events = yield self.db.getEvents(trigger_id=self.trigger_id, start=-100, end=-1)
+        page = request.args.get("p")
+        size = request.args.get("size")
+        page = 0 if page is None else int(page[0])
+        size = 100 if size is None else int(size[0])
+        events = yield self.db.getEvents(trigger_id=self.trigger_id, start=page * size, size=size - 1)
         self.write_json(request, {"list": events})
 
     def getChild(self, path, request):

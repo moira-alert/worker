@@ -1160,7 +1160,7 @@ class Db(service.Service):
 
     @defer.inlineCallbacks
     @docstring_parameters(EVENTS)
-    def getEvents(self, trigger_id=None, start=0, end=100):
+    def getEvents(self, trigger_id=None, start=0, size=100):
         """
         getEvents(self)
 
@@ -1173,7 +1173,11 @@ class Db(service.Service):
         if trigger_id is None:
             events = yield self.rc.lrange(EVENTS_UI, 0, -1)
         else:
-            events = yield self.rc.zrange(TRIGGER_EVENTS.format(trigger_id), start=start, end=end)
+            pipeline = yield self.rc.pipeline()
+            key = TRIGGER_EVENTS.format(trigger_id)
+            pipeline.zrevrange(key, start=start, end=(start + size))
+            pipeline.zcard(key)
+            events, total = yield pipeline.execute_pipeline()
         defer.returnValue([anyjson.deserialize(e) for e in events])
 
     @defer.inlineCallbacks
