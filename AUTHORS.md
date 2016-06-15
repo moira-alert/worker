@@ -14,3 +14,4 @@ We express gratitude to Graphite authors - without them Moira would have been im
 
 # Contributors
 - Denis Kataev (denis.a.kataev+git@gmail.com)
+- Eugene Klimov (bloodjazman@gmail.com)
