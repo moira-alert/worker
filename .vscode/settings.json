@@ -9,5 +9,6 @@
         "*.egg-info": true,
         "**/*.pyc": true
     },
-    "python.linting.flake8Enabled": true
+    "python.linting.flake8Enabled": true,
+    "python.linting.flake8Path": "flake8 --max-line-length=120 --exclude=moira/graphite --ignore=E402"
 }
