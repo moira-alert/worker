@@ -50,7 +50,9 @@ def trigger(trigger, fromTime, now, cache_ttl):
 
             for t1 in time_series[1]:
 
-                log.debug("Checking timeserie {name}", name=t1.name)
+                log.debug("Checking timeserie {name}: {values}", name=t1.name, values=list(t1))
+                log.debug("Checking interval: {start} - {end} ({duration}s), step: {step}",
+                          start=t1.start, end=t1.end, step=t1.step, duration=t1.end - t1.start)
                 metric_state = check["metrics"].get(t1.name)
                 if not metric_state:
                     log.debug("No metric state for {name}.", name=t1.name)
@@ -69,10 +71,11 @@ def trigger(trigger, fromTime, now, cache_ttl):
 
                     t1_value = expression_values["t1"]
 
+                    log.debug("values for ts {timestamp}: {values}",
+                              timestamp=value_timestamp, values=expression_values)
                     if None in expression_values.values():
                         continue
 
-                    log.debug("Using expression values: {values}", values=expression_values)
                     expression_values.update({'warn_value': trigger.struct.get('warn_value'),
                                               'error_value': trigger.struct.get('error_value'),
                                               'PREV_STATE': metric_state['state']})

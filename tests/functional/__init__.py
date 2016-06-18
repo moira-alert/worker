@@ -10,7 +10,6 @@ sys.path.insert(0,
 from fakeredis import FakeStrictRedis, FakePipeline
 from StringIO import StringIO
 from twisted.trial import unittest
-from twisted.logger import globalLogPublisher, textFileLogObserver
 from twisted.web import client
 from twisted.internet import reactor, protocol
 from twisted.internet.defer import Deferred, inlineCallbacks
@@ -20,9 +19,11 @@ from moira.graphite import datalib
 from moira.checker.worker import TriggersCheck
 from moira.checker.trigger import Trigger
 from moira import db
-from moira.logs import log
+from moira.logs import log, init
+from moira import config
 
-globalLogPublisher.addObserver(textFileLogObserver(outFile=sys.stdout))
+config.LOG_LEVEL = 'info'
+init(sys.stdout)
 
 
 def trigger(trigger_id):
