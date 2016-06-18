@@ -26,6 +26,7 @@ CONFIG_PATH = '/etc/moira/config.yml'
 REDIS_HOST = "localhost"
 REDIS_PORT = 6379
 LOG_DIRECTORY = "stdout"
+LOG_LEVEL = "info"
 HTTP_PORT = 8081
 HTTP_ADDR = ''
 GRAPHITE = []
@@ -50,6 +51,7 @@ def get_parser():
     parser.add_argument('-port', help='listening port (default: %s)' % (HTTP_PORT), type=int)
     parser.add_argument('-t', help='check single trigger by id and exit')
     parser.add_argument('-n', help='checker number', type=int)
+    parser.add_argument('-v', help='verbosity log', default=False, const=True, nargs='?')
     return parser
 
 
@@ -57,6 +59,7 @@ def read():
     global REDIS_HOST
     global REDIS_PORT
     global LOG_DIRECTORY
+    global LOG_LEVEL
     global HTTP_PORT
     global HTTP_ADDR
     global GRAPHITE_PREFIX
@@ -81,6 +84,7 @@ def read():
             REDIS_HOST = cfg['redis']['host']
             REDIS_PORT = cfg['redis']['port']
             LOG_DIRECTORY = cfg['worker']['log_dir']
+            LOG_LEVEL = cfg['worker'].get('log_level', 'info')
             HTTP_PORT = cfg['api']['port']
             HTTP_ADDR = cfg['api']['listen']
             if 'graphite' in cfg:
@@ -97,5 +101,7 @@ def read():
 
     if args.l:
         LOG_DIRECTORY = args.l
+    if args.v:
+        LOG_LEVEL = 'debug'
     if args.port:
         HTTP_PORT = args.port

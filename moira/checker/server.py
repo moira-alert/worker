@@ -6,11 +6,12 @@ from moira.graphite import datalib
 from twisted.application import service
 from twisted.internet import reactor
 from twisted.internet.protocol import ProcessProtocol
-from twisted.python import log
 
 from moira import config
 from moira import logs
+from moira.logs import log
 from moira.checker.master import MasterService
+from moira.checker.worker import check
 from moira.db import Db
 
 WORKER_PATH = os.path.abspath(
@@ -22,10 +23,10 @@ WORKER_PATH = os.path.abspath(
 class CheckerProcessProtocol(ProcessProtocol):
 
     def connectionMade(self):
-        log.msg("Run worker - %s" % self.transport.pid)
+        log.info("Run worker - {pid}", pid=self.transport.pid)
 
     def processEnded(self, reason):
-        log.msg("Checker process ended with reason: %s" % reason)
+        log.info("Checker process ended with reason: {reason}", reason=reason)
         if reactor.running:
             reactor.stop()
 
@@ -48,6 +49,10 @@ def run():
 
     config.read()
     logs.checker_master()
+
+    if config.ARGS.t:
+        check(config.ARGS.t)
+        return
 
     top_service = TopService()
 

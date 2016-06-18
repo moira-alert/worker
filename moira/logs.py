@@ -1,11 +1,24 @@
 import os
 import sys
 
-from twisted.python import log
-from twisted.python.log import FileLogObserver
+from twisted.logger import Logger
+from twisted.logger import globalLogPublisher
+from twisted.logger import textFileLogObserver
+from twisted.logger import FilteringLogObserver, LogLevelFilterPredicate, LogLevel
 from twisted.python.logfile import DailyLogFile
 
 from moira import config
+
+log = Logger()
+
+levels = {
+    'debug': LogLevel.debug,
+    'info': LogLevel.info,
+    'warn': LogLevel.warn,
+    'warning': LogLevel.warn,
+    'error': LogLevel.error,
+    'critical': LogLevel.critical
+}
 
 
 class ZeroPaddingDailyLogFile(DailyLogFile):
@@ -19,25 +32,32 @@ class ZeroPaddingDailyLogFile(DailyLogFile):
             return ''.join(map(str, self.toDate(tupledate)))
 
 
+def init(outFile):
+    level = levels[config.LOG_LEVEL]
+    predicate = LogLevelFilterPredicate(defaultLogLevel=level)
+    observer = FilteringLogObserver(textFileLogObserver(outFile=outFile), [predicate])
+    globalLogPublisher.addObserver(observer)
+    log.info("Start logging with {l}", l=level)
+
+
 def api():
-    if config.LOG_DIRECTORY == "stdout":
-        log.startLogging(sys.stdout)
-    else:
-        log.startLogging(FileLogObserver(daily("api.log")))
+    init(sys.stdout if config.LOG_DIRECTORY == "stdout" else daily("api.log"))
 
 
 def checker_master():
-    if config.LOG_DIRECTORY == "stdout":
-        log.startLogging(sys.stdout)
-    else:
-        log.startLogging(FileLogObserver(daily("checker.log")))
+    outFile = sys.stdout if config.LOG_DIRECTORY == "stdout" else daily("checker.log")
+    init(outFile)
 
 
 def checker_worker():
-    if config.LOG_DIRECTORY == "stdout":
-        log.startLogging(sys.stdout)
-    else:
-        log.startLogging(FileLogObserver(daily("checker-{0}.log".format(config.ARGS.n))))
+    outFile = sys.stdout if config.LOG_DIRECTORY == "stdout" else daily("checker-{0}.log".format(config.ARGS.n))
+    init(outFile)
+
+
+def audit():
+    outFile = sys.stdout if config.LOG_DIRECTORY == "stdout" else daily("audit.log")
+    observer = textFileLogObserver(outFile=outFile)
+    return Logger(observer=observer)
 
 
 def daily(name):

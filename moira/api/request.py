@@ -4,11 +4,11 @@ import anyjson
 from moira.graphite.datalib import createRequestContext
 from moira.graphite.evaluator import evaluateTarget
 from twisted.internet import defer
-from twisted.python import log
 from twisted.web import http, server
 
 from moira.checker.expression import getExpression
 from moira.trigger import trigger_reformat
+from moira.logs import log
 
 
 def bad_request(request, message):
@@ -25,8 +25,8 @@ def check_json(f):
         try:
             request.body = request.content.getvalue()
             request.body_json = anyjson.deserialize(request.body)
-        except Exception:
-            log.err()
+        except Exception as e:
+            log.error("Invalid trigger json [{json}]: {e}", json=request.body, e=e)
             defer.returnValue(bad_request(request, "Content is not json"))
         yield f(*args, **kwargs)
     return decorator
@@ -66,20 +66,20 @@ def check_trigger(f):
                 defer.returnValue(bad_request(request, "%s is required" % field))
         try:
             request.body_json = trigger_reformat(json, json.get("id"), json.get("tags", []))
-        except Exception:
-            log.err()
+        except Exception as e:
+            log.error("Invalid trigger format [{json}]: {e}", json=json, e=e)
             defer.returnValue(bad_request(request, "Invalid trigger format"))
         expression_values = {'warn_value': json.get('warn_value'),
                              'error_value': json.get('error_value')}
         try:
             yield resolve_patterns(request, expression_values)
-        except Exception:
-            log.err()
-            defer.returnValue(bad_request(request, "Invalid graphite target"))
+        except Exception as e:
+            log.error("Invalid graphite targets [{targets}]: {e}", targets=request.body_json["targets"], e=e)
+            defer.returnValue(bad_request(request, "Invalid graphite targets"))
         try:
             getExpression(json.get("expression"), **expression_values)
-        except Exception:
-            log.err()
+        except Exception as e:
+            log.error("Invalid expression [{expression}]: {e}", expression=json.get("expression"), e=e)
             defer.returnValue(bad_request(request, "Invalid expression"))
         yield f(*args, **kwargs)
     return decorator
@@ -91,8 +91,8 @@ def delayed(f):
         def wrapper():
             try:
                 yield f(resource, request)
-            except Exception:
-                log.err()
+            except Exception as e:
+                log.error("Error in delayed decorator wrapped function: {e}", e=e)
                 request.setResponseCode(http.INTERNAL_SERVER_ERROR)
                 request.finish()
         wrapper()

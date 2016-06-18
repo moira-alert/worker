@@ -1,14 +1,15 @@
 import random
 
-from moira.graphite import datalib
 from twisted.internet import defer, reactor, task
-from twisted.python import log
 
+from moira.graphite import datalib
 from moira import config
-from moira import logs
 from moira.checker.trigger import Trigger
 from moira.db import Db
 from moira.metrics import spy, graphite
+from moira import logs
+from moira.logs import log
+
 
 PERFORM_INTERVAL = 0.01
 ERROR_TIMEOUT = 10
@@ -22,7 +23,7 @@ class TriggersCheck:
     def start(self):
         self.t = task.LoopingCall(self.perform)
         self.finished = self.t.start(PERFORM_INTERVAL, now=False)
-        log.msg("Checker service started")
+        log.info("Checker service started")
 
     @defer.inlineCallbacks
     def stop(self):
@@ -46,9 +47,9 @@ class TriggersCheck:
             yield task.deferLater(reactor, random.uniform(PERFORM_INTERVAL * 10, PERFORM_INTERVAL * 20), lambda: None)
         except GeneratorExit:
             pass
-        except Exception:
+        except Exception as e:
             spy.TRIGGER_CHECK_ERRORS.report(0)
-            log.err()
+            log.error("Failed to perform triggers check: {e}", e=e)
             yield task.deferLater(reactor, ERROR_TIMEOUT, lambda: None)
 
 
@@ -104,8 +105,4 @@ if __name__ == '__main__':
 
     config.read()
     logs.checker_worker()
-
-    if config.ARGS.t:
-        check(config.ARGS.t)
-    else:
-        main(config.ARGS.n)
+    main(config.ARGS.n)
