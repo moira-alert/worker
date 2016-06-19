@@ -1,10 +1,10 @@
 import time
 from moira import config
+from moira.logs import log
 from twisted.internet import reactor
 from twisted.internet.endpoints import TCP4ClientEndpoint
 from twisted.internet.protocol import Factory, Protocol
 from twisted.internet.task import LoopingCall
-from twisted.python import log
 
 
 class GraphiteProtocol(Protocol):
@@ -18,7 +18,7 @@ class GraphiteProtocol(Protocol):
                 (config.GRAPHITE_PREFIX, name, value, timestamp))
 
     def connectionLost(self, reason):
-        log.err(str(reason))
+        log.error(str(reason))
         self.connected = 0
 
 
@@ -42,11 +42,11 @@ class GraphiteReplica(object):
 
         def success(connection):
             self.connecting = False
-            log.msg('Connected to %s' % self)
+            log.info('Connected to {replica}', replica=self)
             self.connection = connection
 
         def failed(error):
-            log.err('Connect to %s failed: %s' % (self, error))
+            log.error('Connect to {replica} failed: {error}', replica=self, error=error)
             reactor.callLater(10, self.connect, True)
         d.addCallbacks(success, failed)
 
@@ -77,12 +77,12 @@ class GraphiteClusterClient(object):
             replica.connect()
             self.next()
             if self.index == index:
-                log.err("No graphite connection")
+                log.error("No graphite connection")
                 return
             replica = self.replicas[self.index]
         replica.send(get_metrics)
         self.next()
-        log.msg("Sent metrics to %s" % replica)
+        log.info("Sent metrics to {replica}", replica=replica)
 
 
 def sending(get_metrics):

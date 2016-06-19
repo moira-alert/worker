@@ -1,6 +1,5 @@
 import sys
 import time
-from datetime import datetime
 from functools import wraps
 from uuid import uuid4
 
@@ -11,7 +10,7 @@ from twisted.internet import defer, task, reactor
 
 from moira import config
 from moira.cache import cache
-from moira.logs import daily
+from moira import logs
 from moira.trigger import trigger_reformat
 
 _doc_string = """
@@ -130,7 +129,7 @@ def audit(f):
     def decorator(*args, **kwargs):
         global audit_log
         if audit_log is None:
-            audit_log = sys.stdout if config.LOG_DIRECTORY == "stdout" else daily("audit.log")
+            audit_log = logs.audit()
         if 'existing' not in kwargs:
             get_existing = kwargs.get('get_existing')
             kwargs['existing'] = yield get_existing
@@ -139,14 +138,13 @@ def audit(f):
         if request:
             source = {} if request.body_json is None else request.body_json
             existing = {} if existing is None else existing
-            now = datetime.now().isoformat()
             additions = [(k, source[k]) for k in source if k not in existing or source[k] != existing[k]]
             deletions = [(k, existing[k]) for k in existing if k not in source or source[k] != existing[k]]
-            audit_log.write(("%s\t%s\t%s\t%s\n" % (now, request.login, request.method, request.uri)).encode('utf-8'))
+            audit_log.info("{request.login}\t{request.method}\t{request.uri}", request=request)
             for key, add in additions:
-                audit_log.write(("\t+ %s:%s\n" % (key, add)).encode("utf-8"))
+                audit_log.info("\t+ {key}:{add}", key=key, add=add)
             for key, deletion in deletions:
-                audit_log.write(("\t- %s:%s\n" % (key, deletion)).encode("utf-8"))
+                audit_log.info("\t- {key}:{deletion}", key=key, deletion=deletion)
         for a in ['request', 'get_existing']:
             if a in kwargs:
                 del kwargs[a]
@@ -531,7 +529,7 @@ class Db(service.Service):
             pipeline.get(LAST_CHECK_PREFIX.format(trigger_id))
             pipeline.get(TRIGGER_NEXT_PREFIX.format(trigger_id))
         results = yield pipeline.execute_pipeline()
-        slices = [[triggers_ids[i/4]] + results[i:i + 4] for i in range(0, len(results), 4)]
+        slices = [[triggers_ids[i / 4]] + results[i:i + 4] for i in range(0, len(results), 4)]
         for trigger_id, trigger_json, trigger_tags, last_check, throttling in slices:
             if trigger_json is None:
                 continue

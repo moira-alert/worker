@@ -2,8 +2,8 @@ import sys
 
 import txredisapi
 from twisted.internet import defer, reactor
-from twisted.python import log
 
+from moira.logs import log
 from moira import config
 from moira.db import Db, METRIC_OLD_PREFIX, METRIC_PREFIX
 
@@ -11,10 +11,10 @@ from moira.db import Db, METRIC_OLD_PREFIX, METRIC_PREFIX
 @defer.inlineCallbacks
 def convert(db):
 
-    log.msg(db.rc)
-    log.msg("Reading metrics keys")
+    log.info(db.rc)
+    log.info("Reading metrics keys")
     keys = yield db.rc.keys(METRIC_OLD_PREFIX.format("*"))
-    log.msg("Converting ...")
+    log.info("Converting ...")
     for key in keys:
         _, name = key.split(':')
         try:
@@ -25,8 +25,8 @@ def convert(db):
                 pipe.zadd(METRIC_PREFIX.format(name), timestamp, "{0} {1}".format(timestamp, value))
             yield pipe.execute_pipeline()
         except txredisapi.ResponseError as e:
-            log.err("Can not convert %s: %s" % (key, e))
-        log.msg("Metric {0} converted".format(name))
+            log.error("Can not convert {key}: {e}", key=key, e=e)
+        log.info("Metric {name} converted", name=name)
 
     yield db.stopService()
     reactor.stop()

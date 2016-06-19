@@ -1,18 +1,18 @@
 from time import time
 from twisted.internet import defer
-from twisted.python import log
 from moira.graphite import datalib
 from moira import config
 from moira.checker import expression
 from moira.checker import state
 from moira.checker import event
+from moira.logs import log
 
 
 @defer.inlineCallbacks
 def trigger(trigger, fromTime, now, cache_ttl):
     now = now or int(time())
 
-    log.msg("Checking trigger %s" % trigger.id)
+    log.info("Checking trigger {id}", id=trigger.id)
     initialized = yield trigger.init(now, fromTime=fromTime)
     if not initialized:
         raise StopIteration
@@ -50,12 +50,17 @@ def trigger(trigger, fromTime, now, cache_ttl):
 
             for t1 in time_series[1]:
 
+                log.debug("Checking timeserie {name}: {values}", name=t1.name, values=list(t1))
+                log.debug("Checking interval: {start} - {end} ({duration}s), step: {step}",
+                          start=t1.start, end=t1.end, step=t1.step, duration=t1.end - t1.start)
                 metric_state = check["metrics"].get(t1.name)
                 if not metric_state:
+                    log.debug("No metric state for {name}.", name=t1.name)
                     continue
 
                 checkpoint = max(t1.last_state["timestamp"] - config.CHECKPOINT_GAP,
                                  metric_state.get("event_timestamp", 0))
+                log.debug("Checkpoint for {name}: {checkpoint}", name=t1.name, checkpoint=checkpoint)
 
                 for value_timestamp in xrange(t1.start, now + t1.step, t1.step):
 
@@ -66,6 +71,8 @@ def trigger(trigger, fromTime, now, cache_ttl):
 
                     t1_value = expression_values["t1"]
 
+                    log.debug("values for ts {timestamp}: {values}",
+                              timestamp=value_timestamp, values=expression_values)
                     if None in expression_values.values():
                         continue
 
@@ -84,12 +91,12 @@ def trigger(trigger, fromTime, now, cache_ttl):
 
                 # compare with last_check timestamp in case if we have not run checker for a long time
                 if trigger.ttl and metric_state["timestamp"] + trigger.ttl < trigger.last_check["timestamp"]:
-                    log.msg("Metric %s TTL expired for state %s" % (t1.name, metric_state))
+                    log.info("Metric {name} TTL expired for state {state}", name=t1.name, state=metric_state)
                     if trigger.ttl_state == state.DEL and metric_state.get("event_timestamp") is not None:
-                        log.msg("Remove metric %s" % t1.name)
+                        log.info("Remove metric {name}", name=t1.name)
                         del check["metrics"][t1.name]
                         for tN, tName in time_series.other_targets_names.iteritems():
-                            log.msg("Remove metric %s" % tName)
+                            log.info("Remove metric {name}", name=tName)
                             del check["metrics"][tName]
                         for pattern in trigger.struct.get("patterns"):
                             yield trigger.db.delPatternMetrics(pattern)
@@ -101,8 +108,8 @@ def trigger(trigger, fromTime, now, cache_ttl):
 
     except StopIteration:
         raise
-    except Exception:
-        log.err()
+    except Exception as e:
+        log.error("Trigger check failed: {e}", e=e)
         check["state"] = state.EXCEPTION
         check["msg"] = "Trigger evaluation exception"
         yield event.compare_states(trigger, check, trigger.last_check, now)

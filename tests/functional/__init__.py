@@ -6,10 +6,10 @@ sys.path.insert(0,
                         os.path.abspath(
                             os.path.dirname(__file__)),
                         '../../')))
+
 from fakeredis import FakeStrictRedis, FakePipeline
 from StringIO import StringIO
 from twisted.trial import unittest
-from twisted.python import log
 from twisted.web import client
 from twisted.internet import reactor, protocol
 from twisted.internet.defer import Deferred, inlineCallbacks
@@ -19,6 +19,11 @@ from moira.graphite import datalib
 from moira.checker.worker import TriggersCheck
 from moira.checker.trigger import Trigger
 from moira import db
+from moira.logs import log, init
+from moira import config
+
+config.LOG_LEVEL = 'info'
+init(sys.stdout)
 
 
 def trigger(trigger_id):
@@ -92,6 +97,7 @@ class TwistedFakeRedis(FakeStrictRedis):
         return FakeStrictRedis.set(self, key, value, ex=expire, px=pexpire, nx=only_if_not_exists,
                                    xx=only_if_exists)
 
+
 class BodyReceiver(protocol.Protocol):
 
     def __init__(self):
@@ -109,7 +115,6 @@ class WorkerTests(unittest.TestCase):
 
     @inlineCallbacks
     def setUp(self):
-        log.startLogging(sys.stdout)
         self.db = db.Db()
         self.db.rc = TwistedFakeRedis()
         yield self.db.startService()
@@ -133,7 +138,7 @@ class WorkerTests(unittest.TestCase):
     @inlineCallbacks
     def assert_trigger_metric(self, metric, value, state):
         check = yield self.db.getTriggerLastCheck(self.trigger.id)
-        log.msg("Received check: %s" % check)
+        log.info("Received check: {check}", check=check)
         self.assertIsNot(check, None)
         metric = [m for m in check["metrics"].itervalues()][0] \
             if isinstance(metric, int) \

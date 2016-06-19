@@ -3,10 +3,8 @@ from . import trigger, WorkerTests, BodyReceiver
 from twisted.internet.defer import inlineCallbacks, returnValue
 from twisted.web import http, client
 from twisted.web.http_headers import Headers
-from twisted.python.log import ILogObserver
 from StringIO import StringIO
-from moira.checker import state, worker
-from moira import logs
+from moira.checker import state
 
 
 class ApiTests(WorkerTests):
@@ -138,30 +136,30 @@ class ApiTests(WorkerTests):
     def testTriggersPaging(self):
         response, body = yield self.request('PUT', 'trigger/{0}'.format(self.trigger.id),
                                             '{"name": "test trigger", "targets": ["sumSeries(*)"], \
-                                             "warn_value": "1e-7", "error_value": 50, "tags": ["tag1", "tag2"] }',
-                                                    )
+                                             "warn_value": "1e-7", "error_value": 50, "tags": ["tag1", "tag2"] }')
         yield self.trigger.check()
         response, triggers = yield self.request('GET', 'trigger/page?p=0&size=10')
         self.assertEqual(1, len(triggers["list"]))
         self.assertEqual(0, triggers["page"])
         self.assertEqual(10, triggers["size"])
         self.assertEqual(1, triggers["total"])
-        
+
         response, triggers = yield self.request('GET', 'trigger/page?p=0&size=10',
-                                                add_headers={'Cookie': ['moira_filter_tags=tag1; moira_filter_ok=true']})
+                                                add_headers={'Cookie': ['moira_filter_tags=tag1; \
+                                                moira_filter_ok=true']})
         self.assertEqual(0, len(triggers["list"]))
         self.assertEqual(0, triggers["total"])
-        
+
         response, triggers = yield self.request('GET', 'trigger/page?p=0&size=10',
                                                 add_headers={'Cookie': ['moira_filter_tags=']})
         self.assertEqual(1, len(triggers["list"]))
         self.assertEqual(1, triggers["total"])
 
         response, triggers = yield self.request('GET', 'trigger/page?p=0&size=10',
-                                                add_headers={'Cookie': ['moira_filter_tags=not-exising; moira_filter_ok=true']})
+                                                add_headers={'Cookie': ['moira_filter_tags=not-exising; \
+                                                moira_filter_ok=true']})
         self.assertEqual(0, len(triggers["list"]))
         self.assertEqual(0, triggers["total"])
-        
 
     @trigger("expression-trigger")
     @inlineCallbacks
@@ -198,7 +196,7 @@ class ApiTests(WorkerTests):
                                             '{"name": "test trigger", "targets": ["movingAverage(*, \\"10m\\")"], \
                                              "warn_value": "1e-7", "error_value": 50}', http.BAD_REQUEST)
         self.flushLoggedErrors()
-        self.assertEqual("Invalid graphite target", body)
+        self.assertEqual("Invalid graphite targets", body)
 
     @trigger("without-warn-value")
     @inlineCallbacks
@@ -371,7 +369,8 @@ class ApiTests(WorkerTests):
         yield self.trigger.check(now=self.now - 1)
         events, total = yield self.db.getEvents()
         self.assertEqual(1, total)
-        response, _ = yield self.request('PUT', 'trigger/{0}/maintenance'.format(self.trigger.id), anyjson.dumps({metric: self.now}))
+        response, _ = yield self.request('PUT', 'trigger/{0}/maintenance'.format(self.trigger.id),
+                                         anyjson.dumps({metric: self.now}))
         yield self.db.sendMetric(metric, metric, self.now, 1)
         yield self.trigger.check()
         events, total = yield self.db.getEvents()

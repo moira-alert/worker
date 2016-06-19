@@ -6,12 +6,8 @@ from twisted.internet.task import deferLater
 from twisted.internet import reactor
 from twisted.web import http, client
 from twisted.web.http_headers import Headers
-from twisted.python.log import ILogObserver
-from twisted.python import log
 from moira.checker import state, worker
 from moira.checker.worker import TriggersCheck
-from moira.metrics import spy
-from moira import logs
 
 
 class DataTests(WorkerTests):
@@ -643,7 +639,7 @@ class DataTests(WorkerTests):
         self.assertTrue(self.trigger.isSchedAllows(day_begin + 3 * 3600))
         self.assertTrue(self.trigger.isSchedAllows(day_begin + 15 * 3600 - 1))
         self.assertFalse(self.trigger.isSchedAllows(day_begin + 15 * 3600))
-        
+
     @trigger('test-sum-with-null')
     @inlineCallbacks
     def testSumWithNull(self):
@@ -743,7 +739,7 @@ class DataTests(WorkerTests):
 
         yield self.db.sendMetric("metric", "metric", self.now + 120, 0)
         yield self.trigger.check(now=self.now + 120, cache_ttl=0)
-        
+
         yield self.db.sendMetric("metric", "metric", self.now + 60, 1)
         yield self.trigger.check(now=self.now + 180, cache_ttl=0)
         yield self.assert_trigger_metric("metric", 0, state.OK)

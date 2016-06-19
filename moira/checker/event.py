@@ -1,9 +1,9 @@
 from datetime import datetime
 from twisted.internet import defer
-from twisted.python import log
 
 from moira import config
 from moira.checker import state
+from moira.logs import log
 
 
 @defer.inlineCallbacks
@@ -35,7 +35,7 @@ def compare_states(trigger,
                 raise StopIteration
         else:
             event["msg"] = "This metric has been in bad state for more than %s hours - please, fix." % \
-                            (remind_interval / 3600)
+                           (remind_interval / 3600)
     trigger.update_score = True
     current_state["event_timestamp"] = timestamp
     last_state["event_timestamp"] = timestamp
@@ -47,15 +47,15 @@ def compare_states(trigger,
         state_maintenance = current_state.get("maintenance", 0)
         if trigger.maintenance >= timestamp:
             current_state["suppressed"] = True
-            log.msg("Event %s suppressed due to maintenance until %s." %
-                    (event, datetime.fromtimestamp(trigger.maintenance)))
+            log.info("Event {event} suppressed due to maintenance until {date}.",
+                     event=str(event), date=datetime.fromtimestamp(trigger.maintenance))
         elif state_maintenance >= timestamp:
             current_state["suppressed"] = True
-            log.msg("Event %s suppressed due to metric %s maintenance until %s." %
-                    (event, metric, datetime.fromtimestamp(state_maintenance)))
+            log.info("Event {event} suppressed due to metric {metric} maintenance until {date}.",
+                     event=str(event), metric=metric, date=datetime.fromtimestamp(state_maintenance))
         else:
-            log.msg("Writing new event: %s" % event)
+            log.info("Writing new event: {event}", event=str(event))
             yield trigger.db.pushEvent(event)
     else:
         current_state["suppressed"] = True
-        log.msg("Event %s suppressed due to trigger schedule" % str(event))
+        log.info("Event {event} suppressed due to trigger schedule", event=str(event))
