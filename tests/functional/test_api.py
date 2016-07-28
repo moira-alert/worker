@@ -100,7 +100,7 @@ class ApiTests(WorkerTests):
     @inlineCallbacks
     def testTargetWithBracketsPUT(self):
         response, body = yield self.request('PUT', 'trigger/{0}'.format(self.trigger.id),
-                                            '{"name": "test trigger", "targets": ["aliasByNode(KE.Databases.{Mirroring,AG}.*.IsSynchronized,3)"], \
+                                            '{"name": "test trigger", "targets": ["aliasByNode(KE.Databases.{Mirroring-1,AG}.*.IsSynchronized,3)"], \
                                              "warn_value": "1e-7", "error_value": 50, "tags": ["tag1", "tag2"] }',
                                             )
 
