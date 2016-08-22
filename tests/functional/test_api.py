@@ -193,7 +193,7 @@ class ApiTests(WorkerTests):
     @inlineCallbacks
     def testSendWrongTimeSpan(self):
         response, body = yield self.request('PUT', 'trigger/{0}'.format(self.trigger.id),
-                                            '{"name": "test trigger", "targets": ["movingAverage(*, \\"10m\\")"], \
+                                            '{"name": "test trigger", "targets": ["movingAverage(*, \\"10g\\")"], \
                                              "warn_value": "1e-7", "error_value": 50}', http.BAD_REQUEST)
         self.flushLoggedErrors()
         self.assertEqual("Invalid graphite targets", body)
