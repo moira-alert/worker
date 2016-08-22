@@ -185,6 +185,8 @@ def getUnitString(s):
         return 'weeks'
     if s.startswith('mon'):
         return 'months'
+    if s.startswith('m'):
+        return 'minutes'
     if s.startswith('y'):
         return 'years'
     raise Exception("Invalid offset unit '%s'" % s)
