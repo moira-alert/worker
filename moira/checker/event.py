@@ -36,7 +36,6 @@ def compare_states(trigger,
         else:
             event["msg"] = "This metric has been in bad state for more than %s hours - please, fix." % \
                            (remind_interval / 3600)
-    trigger.update_score = True
     current_state["event_timestamp"] = timestamp
     last_state["event_timestamp"] = timestamp
     if value is not None:

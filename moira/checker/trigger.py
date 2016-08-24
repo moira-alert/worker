@@ -13,7 +13,6 @@ class Trigger(object):
     def __init__(self, id, db):
         self.id = id
         self.db = db
-        self.update_score = False
 
     @defer.inlineCallbacks
     def init(self, now, fromTime=None):
@@ -39,8 +38,6 @@ class Trigger(object):
             }
         if self.last_check.get("timestamp") is None:
             self.last_check["timestamp"] = begin
-        if self.last_check.get("score") is None:
-            self.update_score = True
         defer.returnValue(True)
 
     @defer.inlineCallbacks

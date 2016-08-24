@@ -113,11 +113,6 @@ def trigger(trigger, fromTime, now, cache_ttl):
         check["state"] = state.EXCEPTION
         check["msg"] = "Trigger evaluation exception"
         yield event.compare_states(trigger, check, trigger.last_check, now)
-    if trigger.update_score:
-        update_score(check)
-    yield trigger.db.setTriggerLastCheck(trigger.id, check)
-
-
-def update_score(check):
     scores = sum(map(lambda m: state.SCORES[m["state"]], check["metrics"].itervalues()))
     check["score"] = scores + state.SCORES[check["state"]]
+    yield trigger.db.setTriggerLastCheck(trigger.id, check)
