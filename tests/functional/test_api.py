@@ -147,7 +147,6 @@ class ApiTests(WorkerTests):
         response, triggers = yield self.request('GET', 'trigger/page?p=0&size=10',
                                                 add_headers={'Cookie': ['moira_filter_tags=tag1; \
                                                 moira_filter_ok=true']})
-        print triggers
         self.assertEqual(1, len(triggers["list"]))
         self.assertEqual(1, triggers["total"])
 
