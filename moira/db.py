@@ -78,8 +78,6 @@ CHECKS_COUNTER = "moira-selfstate:checks-counter"
 
 TRIGGER_EVENTS_TTL = 3600 * 24 * 30
 
-DBID = 0
-
 current_module = sys.modules[__name__]
 current_module.__doc__ = _doc_string.format(
     LAST_CHECK_PREFIX.format("<trigger_id>"),
@@ -169,7 +167,7 @@ class Db(service.Service):
         Creates redis connection pool
         """
         if self.rc is None:
-            self.rc = yield redis.ConnectionPool(config.REDIS_HOST, config.REDIS_PORT, dbid=DBID)
+            self.rc = yield redis.ConnectionPool(config.REDIS_HOST, config.REDIS_PORT, dbid=config.DBID)
         defer.returnValue(self)
 
     @audit

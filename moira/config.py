@@ -25,6 +25,7 @@ except ImportError:
 CONFIG_PATH = '/etc/moira/config.yml'
 REDIS_HOST = "localhost"
 REDIS_PORT = 6379
+DBID = 0
 LOG_DIRECTORY = "stdout"
 LOG_LEVEL = "info"
 HTTP_PORT = 8081
@@ -58,6 +59,7 @@ def get_parser():
 def read():
     global REDIS_HOST
     global REDIS_PORT
+    global DBID
     global LOG_DIRECTORY
     global LOG_LEVEL
     global HTTP_PORT
@@ -83,6 +85,7 @@ def read():
             cfg = yaml.load(yml)
             REDIS_HOST = cfg['redis']['host']
             REDIS_PORT = cfg['redis']['port']
+            DBID = cfg['redis'].get('dbid', 0)
             LOG_DIRECTORY = cfg['worker']['log_dir']
             LOG_LEVEL = cfg['worker'].get('log_level', 'info')
             HTTP_PORT = cfg['api']['port']
