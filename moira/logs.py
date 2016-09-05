@@ -36,6 +36,7 @@ def init(outFile):
     level = levels[config.LOG_LEVEL]
     predicate = LogLevelFilterPredicate(defaultLogLevel=level)
     observer = FilteringLogObserver(textFileLogObserver(outFile=outFile), [predicate])
+    observer._encoding = "utf-8"
     globalLogPublisher.addObserver(observer)
     log.info("Start logging with {l}", l=level)
 
@@ -57,6 +58,7 @@ def checker_worker():
 def audit():
     outFile = sys.stdout if config.LOG_DIRECTORY == "stdout" else daily("audit.log")
     observer = textFileLogObserver(outFile=outFile)
+    observer._encoding = "utf-8"
     return Logger(observer=observer)
 
 

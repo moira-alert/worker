@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import anyjson
 from . import trigger, WorkerTests, BodyReceiver
 from twisted.internet.defer import inlineCallbacks, returnValue
@@ -101,6 +102,14 @@ class ApiTests(WorkerTests):
     def testTargetWithBracketsPUT(self):
         response, body = yield self.request('PUT', 'trigger/{0}'.format(self.trigger.id),
                                             '{"name": "test trigger", "targets": ["aliasByNode(KE.Databases.{Mirroring-1,AG}.*.IsSynchronized,3)"], \
+                                             "warn_value": "1e-7", "error_value": 50, "tags": ["tag1", "tag2"] }',
+                                            )
+
+    @trigger("good-trigger")
+    @inlineCallbacks
+    def testTargetWithNonAsciiNamePUT(self):
+        response, body = yield self.request('PUT', 'trigger/{0}'.format(self.trigger.id),
+                                            '{"name": "Тестовый триггер", "targets": ["Metric.One"], \
                                              "warn_value": "1e-7", "error_value": 50, "tags": ["tag1", "tag2"] }',
                                             )
 
