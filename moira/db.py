@@ -140,9 +140,9 @@ def audit(f):
             deletions = [(k, existing[k]) for k in existing if k not in source or source[k] != existing[k]]
             audit_log.info("{request.login}\t{request.method}\t{request.uri}", request=request)
             for key, add in additions:
-                audit_log.info("\t+ {key}:{add}", key=key, add=add)
+                audit_log.info("\t+ {key}:{add!r}", key=key, add=add)
             for key, deletion in deletions:
-                audit_log.info("\t- {key}:{deletion}", key=key, deletion=deletion)
+                audit_log.info("\t- {key}:{deletion!r}", key=key, deletion=deletion)
         for a in ['request', 'get_existing']:
             if a in kwargs:
                 del kwargs[a]
