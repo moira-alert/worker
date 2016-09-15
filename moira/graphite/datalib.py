@@ -126,22 +126,16 @@ def fetchData(requestContext, pathExpr):
     else:
         first_metric = metrics[0]
         retention = yield db.getMetricRetention(first_metric, cache_key=first_metric, cache_ttl=60)
-        data = yield db.getMetricsValues(metrics, startTime, ("" if requestContext.get('delta') is None else "(") + str(endTime))
+        dataList = yield db.getMetricsValues(metrics, startTime, endTime)
+        valuesList = unpackTimeSeries(dataList, retention, startTime, endTime)
         for i, metric in enumerate(metrics):
             requestContext['metrics'].add(metric)
-            points = {}
-            for value, timestamp in data[i]:
-                bucket = (int)((timestamp - startTime) / retention)
-                points[bucket] = extract(value)
-
-            values = [points.get((int)((timestamp - startTime) / retention)) for timestamp in xrange(startTime, endTime + retention, retention)]
-
             series = TimeSeries(
                 metric,
                 startTime,
                 endTime,
                 retention,
-                values)
+                valuesList[i])
             series.pathExpression = pathExpr
             seriesList.append(series)
 
