@@ -35,7 +35,7 @@ def check_json(f):
 @defer.inlineCallbacks
 def resolve_patterns(request, expression_values):
     now = int(time())
-    context = createRequestContext(str(now - 600), str(now))
+    context = createRequestContext(str(now - 600), str(now), allowRealTimeAlerting=True)
     resolved = set()
     target_num = 1
     context['time_series_names'] = set()

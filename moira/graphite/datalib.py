@@ -19,9 +19,10 @@ from twisted.internet import defer
 db = None
 
 
-def createRequestContext(fromTime, toTime):
+def createRequestContext(fromTime, endTime, allowRealTimeAlerting):
     return {'startTime': parseATTime(fromTime),
-            'endTime': parseATTime(toTime),
+            'endTime': parseATTime(endTime),
+            'allowRealTimeAlerting': allowRealTimeAlerting,
             'localOnly': False,
             'template': None,
             'graphite_patterns': {},
@@ -126,7 +127,7 @@ def unpackTimeSeries(dataList, retention, startTime, endTime, allowRealTimeAlert
 
 
 @defer.inlineCallbacks
-def fetchData(requestContext, pathExpr, allowRealTimeAlerting=True):
+def fetchData(requestContext, pathExpr):
 
     global db
 
@@ -135,6 +136,7 @@ def fetchData(requestContext, pathExpr, allowRealTimeAlerting=True):
 
     startTime = int(epoch(requestContext['startTime']))
     endTime = int(epoch(requestContext['endTime']))
+    allowRealTimeAlerting = requestContext['allowRealTimeAlerting']
     seriesList = []
 
     metrics = list((yield db.getPatternMetrics(pathExpr)))

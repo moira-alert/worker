@@ -20,7 +20,8 @@ def trigger(trigger, fromTime, now, cache_ttl):
     if fromTime is None:
         fromTime = trigger.last_check.get("timestamp", now)
 
-    requestContext = datalib.createRequestContext(str(fromTime - (trigger.ttl or 600)), str(now))
+    fromTime = str(fromTime - (trigger.ttl or 600))
+    requestContext = datalib.createRequestContext(fromTime, endTime=str(now), allowRealTimeAlerting=trigger.is_simple)
 
     check = {
         "metrics": trigger.last_check["metrics"].copy(),

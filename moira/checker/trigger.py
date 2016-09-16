@@ -8,6 +8,23 @@ from moira.checker import check
 from moira.checker.timeseries import TargetTimeSeries
 
 
+@defer.inlineCallbacks
+def is_simple_target(target, now):
+    from moira.graphite.datalib import createRequestContext
+    requestContext = createRequestContext(str(now - 600), str(now), allowRealTimeAlerting=True)
+    yield evaluateTarget(requestContext, target)
+    patternCount = 0
+    complexPatternFound = False
+    for pattern, resolve in requestContext['graphite_patterns'].iteritems():
+        patternCount += 1
+        if '*' in pattern or '{' in pattern:
+            complexPatternFound = True
+            break
+    targetIsSimple = patternCount <= 1 and not complexPatternFound
+    yield targetIsSimple
+    return
+
+
 class Trigger(object):
 
     def __init__(self, id, db):
@@ -20,6 +37,12 @@ class Trigger(object):
         json, self.struct = yield self.db.getTrigger(self.id)
         if json is None:
             defer.returnValue(False)
+
+        self.is_simple = True
+        targets = self.struct.get("targets", [])
+        if len(targets) > 1 or (len(targets) == 1 and not is_simple_target(targets[0], now)):
+            self.is_simple = False
+
         for tag in self.struct["tags"]:
             tag_data = yield self.db.getTag(tag)
             maintenance = tag_data.get('maintenance', 0)
