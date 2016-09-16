@@ -105,7 +105,7 @@ def extract(value):
 
 
 @defer.inlineCallbacks
-def fetchData(requestContext, pathExpr):
+def fetchData(requestContext, pathExpr, allowRealTimeAlerting=False):
 
     global db
 
@@ -127,7 +127,7 @@ def fetchData(requestContext, pathExpr):
         first_metric = metrics[0]
         retention = yield db.getMetricRetention(first_metric, cache_key=first_metric, cache_ttl=60)
         dataList = yield db.getMetricsValues(metrics, startTime, endTime)
-        valuesList = unpackTimeSeries(dataList, retention, startTime, endTime)
+        valuesList = unpackTimeSeries(dataList, retention, startTime, endTime, allowRealTimeAlerting)
         for i, metric in enumerate(metrics):
             requestContext['metrics'].add(metric)
             series = TimeSeries(

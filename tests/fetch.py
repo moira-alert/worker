@@ -7,25 +7,27 @@ sys.path.insert(0,
                             os.path.dirname(__file__)),
                         '.')))
 from twisted.trial import unittest
-from moira.graphite.datalib import extract
 
 
 def unpackTimeSeries(dataList, retention, startTime, endTime, allowRealTimeAlerting):
+
+    def getTimeSlot(timestamp):
+        return int((timestamp - startTime) / retention)
+
     valuesList = []
     for data in dataList:
         points = {}
         for value, timestamp in data:
-            bucket = (int)((timestamp - startTime) / retention)
-            points[bucket] = extract(value)
+            points[getTimeSlot(timestamp)] = float(value.split()[1])
 
-        lastFullBucketEndTime = ((endTime - startTime) / retention) * retention
+        lastTimeSlot = getTimeSlot(endTime)
 
         values = []
-        for timestamp in range(startTime, lastFullBucketEndTime, retention):
-            point = points.get((int)((timestamp - startTime) / retention))
-            values.append(point)
+        # note that right boundary is exclusive
+        for timeSlot in range(0, lastTimeSlot):
+            values.append(points.get(timeSlot))
 
-        lastPoint = points.get((int)((endTime - startTime) / retention))
+        lastPoint = points.get(lastTimeSlot)
         if allowRealTimeAlerting and lastPoint is not None:
             values.append(lastPoint)
 
@@ -203,28 +205,16 @@ class Fetch(unittest.TestCase):
 
     def testNonZeroStartTimeSeries(self):
         retention = 10
-        startTime = 1
+        startTime = 2
         dataList = [[]]
 
-        # time == 1
-        self.assertEqual(unpackTimeSeries(dataList, retention, startTime, 1, allowRealTimeAlerting=True), [[]])
-
-        # time == 6
-        dataList[0].append(self.generateRedisDataPoint(6, 100.))
-        self.assertEqual(unpackTimeSeries(dataList, retention, startTime, 6, allowRealTimeAlerting=True), [[100.]])
-
-        # time == 10, 11, 12
-        self.assertEqual(unpackTimeSeries(dataList, retention, startTime, 10, allowRealTimeAlerting=True), [[100.]])
+        # time == 11
+        self.assertEqual(unpackTimeSeries(dataList, retention, startTime, 11, allowRealTimeAlerting=False), [[]])
+        self.assertEqual(unpackTimeSeries(dataList, retention, startTime, 11, allowRealTimeAlerting=True), [[]])
+        dataList[0].append(self.generateRedisDataPoint(11, 100.))
+        self.assertEqual(unpackTimeSeries(dataList, retention, startTime, 11, allowRealTimeAlerting=False), [[]])
         self.assertEqual(unpackTimeSeries(dataList, retention, startTime, 11, allowRealTimeAlerting=True), [[100.]])
+
+        # time == 12
+        self.assertEqual(unpackTimeSeries(dataList, retention, startTime, 12, allowRealTimeAlerting=False), [[100.]])
         self.assertEqual(unpackTimeSeries(dataList, retention, startTime, 12, allowRealTimeAlerting=True), [[100.]])
-
-        # time == 16
-        dataList[0].append(self.generateRedisDataPoint(16, 200.))
-
-        # time == 26
-        dataList[0].append(self.generateRedisDataPoint(26, 300.))
-        self.assertEqual(unpackTimeSeries(dataList, retention, startTime, 26, allowRealTimeAlerting=True), [[100., 200., 300.]])
-
-        # time == 30, 31
-        self.assertEqual(unpackTimeSeries(dataList, retention, startTime, 30, allowRealTimeAlerting=True), [[100., 200., 300.]])
-        self.assertEqual(unpackTimeSeries(dataList, retention, startTime, 31, allowRealTimeAlerting=True), [[100., 200., 300.]])
