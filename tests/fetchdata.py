@@ -7,35 +7,10 @@ sys.path.insert(0,
                             os.path.dirname(__file__)),
                         '.')))
 from twisted.trial import unittest
+from moira.graphite.datalib import unpackTimeSeries
 
 
-def unpackTimeSeries(dataList, retention, startTime, endTime, allowRealTimeAlerting):
-
-    def getTimeSlot(timestamp):
-        return int((timestamp - startTime) / retention)
-
-    valuesList = []
-    for data in dataList:
-        points = {}
-        for value, timestamp in data:
-            points[getTimeSlot(timestamp)] = float(value.split()[1])
-
-        lastTimeSlot = getTimeSlot(endTime)
-
-        values = []
-        # note that right boundary is exclusive
-        for timeSlot in range(0, lastTimeSlot):
-            values.append(points.get(timeSlot))
-
-        lastPoint = points.get(lastTimeSlot)
-        if allowRealTimeAlerting and lastPoint is not None:
-            values.append(lastPoint)
-
-        valuesList.append(values)
-    return valuesList
-
-
-class Fetch(unittest.TestCase):
+class FetchData(unittest.TestCase):
     def generateRedisDataPoint(self, timestamp, value):
         return ("%f %f" % (timestamp, value), timestamp)
 
