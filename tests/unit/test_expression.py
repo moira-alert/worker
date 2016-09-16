@@ -1,4 +1,4 @@
-import unittest
+from twisted.trial import unittest
 from moira.checker import state, expression
 
 
