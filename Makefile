@@ -18,7 +18,7 @@ prepare:
 	$(PIP) install -r requirements.txt
 
 test:
-	coverage run --source="moira" --omit="moira/graphite/*,moira/metrics/*" $(TRIAL) tests
+	coverage run --source="moira" --omit="moira/graphite/*,moira/metrics/*" $(TRIAL) tests/unit tests/functional
 
 pip: version
 	$(PYTHON) setup.py sdist
