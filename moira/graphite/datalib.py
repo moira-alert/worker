@@ -126,7 +126,7 @@ def unpackTimeSeries(dataList, retention, startTime, endTime, allowRealTimeAlert
 
 
 @defer.inlineCallbacks
-def fetchData(requestContext, pathExpr, allowRealTimeAlerting=False):
+def fetchData(requestContext, pathExpr, allowRealTimeAlerting=True):
 
     global db
 
