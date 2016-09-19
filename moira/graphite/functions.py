@@ -874,7 +874,6 @@ def movingMedian(requestContext, seriesList, windowSize):
     else:
         bootstrapSeconds = max([s.step for s in seriesList]) * int(windowSize)
 
-    requestContext['delta'] = bootstrapSeconds
     bootstrapList = yield _fetchWithBootstrap(requestContext, seriesList, seconds=bootstrapSeconds)
     result = []
 
@@ -1134,7 +1133,6 @@ def movingAverage(requestContext, seriesList, windowSize, func='avg'):
     else:
         bootstrapSeconds = max([s.step for s in seriesList]) * int(windowSize)
 
-    requestContext['delta'] = bootstrapSeconds
     bootstrapList = yield _fetchWithBootstrap(requestContext, seriesList, seconds=bootstrapSeconds)
     result = []
 
@@ -2962,7 +2960,6 @@ def timeStack(
     for shft in range(timeShiftStartint, timeShiftEndint):
         myContext = requestContext.copy()
         innerDelta = delta * shft
-        myContext['delta'] = abs(innerDelta.seconds + (innerDelta.days * 86400))
         myContext['startTime'] = requestContext['startTime'] + innerDelta
         myContext['endTime'] = requestContext['endTime'] + innerDelta
         for shiftedSeries in (yield evaluateTarget(myContext, series.pathExpression)):
@@ -3012,7 +3009,6 @@ def timeShift(requestContext, seriesList, timeShift, resetEnd=True):
     myContext = requestContext.copy()
     myContext['startTime'] = requestContext['startTime'] + delta
     myContext['endTime'] = requestContext['endTime'] + delta
-    myContext['delta'] = abs(delta.seconds + (delta.days * 86400))
     results = []
     if len(seriesList) > 0:
         # if len(seriesList) > 1, they will all have the same pathExpression,
@@ -3488,7 +3484,6 @@ def smartSummarize(
     interval = delta.seconds + (delta.days * 86400)
 
     # Adjust the start time to fit an entire day for intervals >= 1 day
-    requestContext['delta'] = interval
     requestContext = requestContext.copy()
     s = requestContext['startTime']
     if interval >= DAY:
@@ -3605,7 +3600,6 @@ def summarize(
     results = []
     delta = parseTimeOffset(intervalString)
     interval = delta.seconds + (delta.days * 86400)
-    requestContext['delta'] = interval
 
     for series in seriesList:
         buckets = {}
@@ -3691,7 +3685,6 @@ def hitcount(
     results = []
     delta = parseTimeOffset(intervalString)
     interval = int(delta.seconds + (delta.days * 86400))
-    requestContext['delta'] = interval
 
     if alignToInterval:
         requestContext = requestContext.copy()
