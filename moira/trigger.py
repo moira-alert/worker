@@ -1,7 +1,10 @@
 def trigger_reformat(trigger, trigger_id, tags):
     if trigger_id:
         trigger["id"] = trigger_id
-    trigger["tags"] = list(tags)
+    if type(tags) is str or type(tags) is unicode:
+        trigger["tags"] = [tags]
+    else:
+        trigger["tags"] = list(tags)
     for field in ["warn_value", "error_value"]:
         value = trigger.get(field)
         if value is not None:
