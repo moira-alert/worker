@@ -81,4 +81,4 @@ class Tags(RedisResouce):
     @defer.inlineCallbacks
     def render_GET(self, request):
         tags = yield self.db.getTags()
-        self.write_json(request, {"tags": tags, "list": [k for k in tags]})
+        self.write_json(request, {"tags": tags, "list": [unicode(k) for k in tags]})

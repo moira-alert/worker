@@ -721,7 +721,7 @@ class Db(service.Service):
         tags = yield self.rc.smembers(TAGS)
         for tag in tags:
             data = yield self.getTag(tag)
-            result[tag] = data
+            result[unicode(tag)] = data
         defer.returnValue(result)
 
     @defer.inlineCallbacks

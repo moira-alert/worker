@@ -188,6 +188,17 @@ class ApiTests(WorkerTests):
         self.flushLoggedErrors()
         self.assertEqual("Content is not json", body)
 
+    @trigger("not-list-targets")
+    @inlineCallbacks
+    def testSendNotListTargets(self):
+        response, body = yield self.request('PUT', 'trigger/{0}'.format(self.trigger.id),
+                                            '{ "name":"111", \
+        "targets":{"target":"DevOps.system.*.loadavg.load"}, \
+        "expression":"WARN if t1 > 10 else OK", \
+        "tags":"1111" }', http.BAD_REQUEST)
+        self.flushLoggedErrors()
+        self.assertEqual("Invalid trigger targets", body)
+
     @trigger("invalid-expression-trigger")
     @inlineCallbacks
     def testSendInvalidExpressionTrigger(self):

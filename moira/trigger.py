@@ -8,6 +8,7 @@ def trigger_reformat(trigger, trigger_id, tags):
             trigger[field] = float(value)
         else:
             trigger[field] = None
+    trigger["name"] = unicode(trigger.get("name"))
     ttl = trigger.get("ttl")
     if ttl:
         trigger["ttl"] = int(ttl)

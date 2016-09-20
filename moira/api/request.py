@@ -64,6 +64,8 @@ def check_trigger(f):
         for field, alt in [("targets", None), ("warn_value", "expression"), ("error_value", "expression")]:
             if json.get(field) is None and json.get(alt) is None:
                 defer.returnValue(bad_request(request, "%s is required" % field))
+        if type(json["targets"]) is not list:
+            defer.returnValue(bad_request(request, "Invalid trigger targets"))
         try:
             request.body_json = trigger_reformat(json, json.get("id"), json.get("tags", []))
         except Exception as e:
