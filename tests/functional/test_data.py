@@ -746,3 +746,37 @@ class DataTests(WorkerTests):
         events, total = yield self.db.getEvents()
         self.assertEquals(total, 3)
         self.assertEquals(events[1]["state"], state.WARN)
+
+    @trigger('test-simple-trigger-realtime-behaviour')
+    @inlineCallbacks
+    def testSimpleTriggerRealtimeBehaviour(self):
+        metric = 'MoiraFuncTest.metric.one'
+        yield self.sendTrigger('{"name": "test trigger", "targets": ["' +
+                               metric + '"], "warn_value": 60, "error_value": 90, "ttl":600 }')
+
+        yield self.db.sendMetric(metric, metric, self.now - 60, 10)
+        yield self.trigger.check(now=self.now)
+        yield self.assert_trigger_metric(metric, 10, state.OK)
+
+        yield self.db.sendMetric(metric, metric, self.now, 100)
+        yield self.trigger.check(now=self.now)
+        yield self.assert_trigger_metric(metric, 100, state.ERROR)
+
+    @trigger('test-complex-trigger-conservative-behaviour')
+    @inlineCallbacks
+    def testComplexTriggerConservativeBehaviour(self):
+        metric = 'MoiraFuncTest.metric.one'
+        pattern = 'MoiraFuncTest.metric.*'
+        yield self.sendTrigger('{"name": "test trigger", "targets": ["' +
+                               pattern + '"], "warn_value": 60, "error_value": 90, "ttl":600 }')
+
+        yield self.db.sendMetric(pattern, metric, self.now - 60, 10)
+        yield self.trigger.check(now=self.now)
+        yield self.assert_trigger_metric(metric, 10, state.OK)
+
+        yield self.db.sendMetric(pattern, metric, self.now, 100)
+        yield self.trigger.check(now=self.now)
+        yield self.assert_trigger_metric(metric, 10, state.OK)
+
+        yield self.trigger.check(now=self.now + 60)
+        yield self.assert_trigger_metric(metric, 100, state.ERROR)
