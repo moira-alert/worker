@@ -32,6 +32,19 @@ def check_json(f):
     return decorator
 
 
+def is_simple_target(requestContext):
+    if len(requestContext['graphite_patterns']) > 1:
+        return False
+
+    complexPatternFound = False
+    for pattern in requestContext['graphite_patterns'].iterkeys():
+        if '*' in pattern or '{' in pattern:
+            complexPatternFound = True
+            break
+
+    return not complexPatternFound
+
+
 @defer.inlineCallbacks
 def resolve_patterns(request, expression_values):
     now = int(time())
@@ -39,8 +52,13 @@ def resolve_patterns(request, expression_values):
     resolved = set()
     target_num = 1
     context['time_series_names'] = set()
+    is_simple_trigger = True
+    if len(request.body_json["targets"]) > 1:
+        is_simple_trigger = False
     for target in request.body_json["targets"]:
         time_series = yield evaluateTarget(context, target)
+        if is_simple_trigger and not is_simple_target(context):
+            is_simple_trigger = False
         target_name = "t%s" % target_num
         for ts in time_series:
             context['time_series_names'].add(ts.name)
@@ -52,6 +70,7 @@ def resolve_patterns(request, expression_values):
                     resolved.add(r)
     request.body_json["patterns"] = [pattern for pattern in context['graphite_patterns']
                                      if pattern not in resolved]
+    request.body_json["is_simple_trigger"] = is_simple_trigger
     request.context = context
 
 
