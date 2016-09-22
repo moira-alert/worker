@@ -151,6 +151,7 @@ def fetchData(requestContext, pathExpr):
         retention = yield db.getMetricRetention(first_metric, cache_key=first_metric, cache_ttl=60)
         dataList = yield db.getMetricsValues(metrics, startTime, endTime)
         valuesList = unpackTimeSeries(dataList, retention, startTime, endTime, allowRealTimeAlerting)
+        print valuesList
         for i, metric in enumerate(metrics):
             requestContext['metrics'].add(metric)
             series = TimeSeries(

@@ -8,6 +8,7 @@ from twisted.web import http, client
 from twisted.web.http_headers import Headers
 from moira.checker import state, worker
 from moira.checker.worker import TriggersCheck
+from moira.graphite import datalib
 
 
 class DataTests(WorkerTests):
@@ -303,6 +304,19 @@ class DataTests(WorkerTests):
         yield self.trigger.check(now=self.now)
         yield self.assert_trigger_metric('movingAverage(' + metric +
                                          ',3)', 30, state.ERROR)
+
+    @trigger('test-moving-average')
+    @inlineCallbacks
+    def testMovingAverage2(self):
+        metric = 'Metric'
+        yield self.sendTrigger('{"name": "test trigger", "targets": ["movingAverage(' + metric + ', 2)"],  "warn_value": 1, "error_value": 90, "ttl":"600" }')
+        for n in range(0, 10):
+            yield self.db.sendMetric(metric, metric, self.now - 60 * (10 - n) , n)
+        yield self.trigger.check(now=self.now - 60 * 3)
+        requestContext = datalib.createRequestContext(str(self.now - 180), endTime=str(self.now), allowRealTimeAlerting=True)
+        ts = yield self.trigger.get_timeseries(requestContext)
+        print list(ts[1][0])
+        self.assertFalse(ts[1][0][0] == 7.0)
 
     @trigger('test-trigger-moving-average-min')
     @inlineCallbacks
