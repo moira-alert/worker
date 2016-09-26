@@ -1,4 +1,6 @@
 import anyjson
+
+from moira.graphite import datalib
 from . import trigger, WorkerTests
 from StringIO import StringIO
 from twisted.internet.defer import inlineCallbacks, returnValue
@@ -314,12 +316,10 @@ class DataTests(WorkerTests):
         yield self.db.sendMetric(metric, metric, self.now - 120, 20)
         yield self.db.sendMetric(metric, metric, self.now - 60, 30)
         yield self.trigger.check(now=self.now - 60)
-        yield self.assert_trigger_metric('movingAverage(' + metric +
-                                         ',3)', 10, state.OK)
+        yield self.assert_trigger_metric('movingAverage(' + metric + ',3)', 10, state.OK)
         yield self.db.sendMetric(metric, metric, self.now, 40)
         yield self.trigger.check(now=self.now)
-        yield self.assert_trigger_metric('movingAverage(' + metric +
-                                         ',3)', 20, state.WARN)
+        yield self.assert_trigger_metric('movingAverage(' + metric + ',3)', 20, state.WARN)
 
     @trigger('test-mem-free')
     @inlineCallbacks
@@ -780,3 +780,67 @@ class DataTests(WorkerTests):
 
         yield self.trigger.check(now=self.now + 60)
         yield self.assert_trigger_metric(metric, 100, state.ERROR)
+
+
+    @trigger('test-trigger-on-multiple-metrics-does-not-produce-preliminary-real-time-alert')
+    @inlineCallbacks
+    def testComplexTriggerMultipleMetricsNoPreliminaryAlert(self):
+        metric1 = 'metric.one'
+        metric2 = 'metric.two'
+        pattern = 'metric.*'
+        target = 'maxSeries(movingAverage(%s, 3, \\"min\\"))' % pattern
+        targetMetric = 'maxSeries(movingAverage(metric.one,3),movingAverage(metric.two,3))'
+        yield self.sendTrigger(
+            '{"name": "tt", "targets": ["%s"], "warn_value": 99, "error_value": 100, "ttl":"600" }' % target)
+
+        yield self.db.sendMetric(pattern, metric1, self.now, 10)
+        yield self.db.sendMetric(pattern, metric2, self.now, 20)
+        yield self.db.sendMetric(pattern, metric1, self.now + 60, 110)
+        yield self.db.sendMetric(pattern, metric2, self.now + 60, 120)
+        yield self.db.sendMetric(pattern, metric1, self.now + 120, 210)
+        yield self.db.sendMetric(pattern, metric2, self.now + 120, 220)
+
+        yield self.trigger.check(now=self.now + 180)
+        yield self.assert_trigger_metric(targetMetric, 20, state.OK)
+
+        yield self.db.sendMetric(pattern, metric1, self.now + 180, 310)
+
+        yield self.trigger.check(now=self.now + 180)
+        yield self.assert_trigger_metric(targetMetric, 20, state.OK)
+
+        yield self.db.sendMetric(pattern, metric2, self.now + 180, 320)
+
+        yield self.trigger.check(now=self.now + 180)
+        yield self.assert_trigger_metric(targetMetric, 20, state.OK)
+
+        yield self.trigger.check(now=self.now + 240 - 1)
+        yield self.assert_trigger_metric(targetMetric, 20, state.OK)
+
+        yield self.trigger.check(now=self.now + 240)
+        yield self.assert_trigger_metric(targetMetric, 120., state.ERROR)
+
+
+    @trigger('test-moving-average-bootstrap-with-no-realtime-alerting')
+    @inlineCallbacks
+    def testMovingAverageBootstrapWithNoRealTimeAlerting(self):
+        yield self.movingAverageBootstrap(allowRealTimeAlerting=False)
+
+
+    @trigger('test-moving-average-bootstrap-with-realtime-alerting')
+    @inlineCallbacks
+    def testMovingAverageBootstrapWithRealTimeAlerting(self):
+        yield self.movingAverageBootstrap(allowRealTimeAlerting=True)
+
+    @inlineCallbacks
+    def movingAverageBootstrap(self, allowRealTimeAlerting):
+        yield self.sendTrigger(
+            '{"name": "t", "targets": ["movingAverage(m, 2)"],  "warn_value": 1, "error_value": 90, "ttl":"600" }')
+        for n in range(0, 10):
+            yield self.db.sendMetric('m', 'm', self.now - 60 * (10 - n), n)
+        yield self.trigger.check(fromTime=self.now - 300, now=self.now)
+        fromTime = str(self.now - 180)
+        endTime = str(self.now - 60)
+        rc = datalib.createRequestContext(fromTime, endTime, allowRealTimeAlerting)
+        result = yield self.trigger.get_timeseries(rc)
+        ts = result[1][0]
+        self.assertEqual(ts[0], 6.5)

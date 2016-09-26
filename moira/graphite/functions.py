@@ -2540,9 +2540,9 @@ def secondYAxis(requestContext, seriesList):
 def _fetchWithBootstrap(requestContext, seriesList, **delta_kwargs):
     'Request the same data but with a bootstrap period at the beginning'
     bootstrapContext = requestContext.copy()
-    bootstrapContext['startTime'] = requestContext[
-        'startTime'] - timedelta(**delta_kwargs)
+    bootstrapContext['startTime'] = requestContext['startTime'] - timedelta(**delta_kwargs)
     bootstrapContext['endTime'] = requestContext['startTime']
+    bootstrapContext['bootstrap'] = True
 
     bootstrapList = []
     for series in seriesList:

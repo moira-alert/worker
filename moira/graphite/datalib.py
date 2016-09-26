@@ -22,6 +22,7 @@ db = None
 def createRequestContext(fromTime, endTime, allowRealTimeAlerting):
     return {'startTime': parseATTime(fromTime),
             'endTime': parseATTime(endTime),
+            'bootstrap': False,
             'allowRealTimeAlerting': allowRealTimeAlerting,
             'localOnly': False,
             'template': None,
@@ -100,7 +101,7 @@ class TimeSeries(list):
         }
 
 
-def unpackTimeSeries(dataList, retention, startTime, endTime, allowRealTimeAlerting):
+def unpackTimeSeries(dataList, retention, startTime, endTime, bootstrap, allowRealTimeAlerting):
 
     def getTimeSlot(timestamp):
         return int((timestamp - startTime) / retention)
@@ -119,7 +120,7 @@ def unpackTimeSeries(dataList, retention, startTime, endTime, allowRealTimeAlert
             values.append(points.get(timeSlot))
 
         lastPoint = points.get(lastTimeSlot)
-        if allowRealTimeAlerting and lastPoint is not None:
+        if bootstrap or (allowRealTimeAlerting and lastPoint is not None):
             values.append(lastPoint)
 
         valuesList.append(values)
@@ -136,11 +137,11 @@ def fetchData(requestContext, pathExpr):
 
     startTime = int(epoch(requestContext['startTime']))
     endTime = int(epoch(requestContext['endTime']))
+    bootstrap = requestContext['bootstrap']
     allowRealTimeAlerting = requestContext['allowRealTimeAlerting']
+
     seriesList = []
-
     metrics = list((yield db.getPatternMetrics(pathExpr)))
-
     if len(metrics) == 0:
         series = TimeSeries(pathExpr, startTime, startTime, 60, [])
         series.pathExpression = pathExpr
@@ -149,8 +150,13 @@ def fetchData(requestContext, pathExpr):
     else:
         first_metric = metrics[0]
         retention = yield db.getMetricRetention(first_metric, cache_key=first_metric, cache_ttl=60)
+        if bootstrap:
+            # in bootstrap mode in order to avoid overlapping of bootstrap time series with current time series
+            # we have to fetch all points up to the last retention time slot boundary preceding endTime
+            # not including that boundary because endTime is set to be equal startTime from the original requestContext
+            endTime -= int((endTime - startTime) % retention) + 1
         dataList = yield db.getMetricsValues(metrics, startTime, endTime)
-        valuesList = unpackTimeSeries(dataList, retention, startTime, endTime, allowRealTimeAlerting)
+        valuesList = unpackTimeSeries(dataList, retention, startTime, endTime, bootstrap, allowRealTimeAlerting)
         for i, metric in enumerate(metrics):
             requestContext['metrics'].add(metric)
             series = TimeSeries(
