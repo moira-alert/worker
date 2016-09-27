@@ -21,7 +21,7 @@ class Trigger(object):
         if json is None:
             defer.returnValue(False)
 
-        self.is_simple = self.struct["is_simple_trigger"]
+        self.is_simple = self.struct.get("is_simple_trigger", False)
 
         for tag in self.struct["tags"]:
             tag_data = yield self.db.getTag(tag)
