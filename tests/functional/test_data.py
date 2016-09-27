@@ -1,4 +1,6 @@
 import anyjson
+
+from moira.graphite import datalib
 from . import trigger, WorkerTests
 from StringIO import StringIO
 from twisted.internet.defer import inlineCallbacks, returnValue
@@ -117,14 +119,14 @@ class DataTests(WorkerTests):
         json, trigger = yield self.db.getTrigger(self.trigger.id)
         yield self.db.sendMetric(metric1, metric1, self.now - 60, 1)
         yield self.db.sendMetric(metric2, metric2, self.now - 60, 2)
-        yield self.trigger.check()
+        yield self.trigger.check(now=self.now)
         yield self.assert_trigger_metric(metric1, 1, state.OK)
         yield self.assert_trigger_metric(metric2, 2, state.OK)
-        yield self.db.sendMetric(metric1, metric1, self.now, 2)
-        yield self.db.sendMetric(metric2, metric2, self.now, 1)
-        yield self.trigger.check()
-        yield self.assert_trigger_metric(metric1, 2, state.ERROR)
-        yield self.assert_trigger_metric(metric2, 1, state.ERROR)
+        yield self.db.sendMetric(metric1, metric1, self.now, 4)
+        yield self.db.sendMetric(metric2, metric2, self.now, 3)
+        yield self.trigger.check(now=self.now + 60)
+        yield self.assert_trigger_metric(metric1, 4, state.ERROR)
+        yield self.assert_trigger_metric(metric2, 3, state.ERROR)
 
     @trigger('test-trigger-expression-prev-state')
     @inlineCallbacks
@@ -138,15 +140,15 @@ class DataTests(WorkerTests):
         json, trigger = yield self.db.getTrigger(self.trigger.id)
         yield self.db.sendMetric(metric1, metric1, self.now - 120, 10)
         yield self.db.sendMetric(metric2, metric2, self.now - 120, 0)
-        yield self.trigger.check()
+        yield self.trigger.check(now=self.now)
         yield self.assert_trigger_metric(metric1, 10, state.OK)
         yield self.db.sendMetric(metric1, metric1, self.now - 60, 11)
         yield self.db.sendMetric(metric2, metric2, self.now - 60, 1)
-        yield self.trigger.check()
+        yield self.trigger.check(now=self.now)
         yield self.assert_trigger_metric(metric1, 11, state.ERROR)
         yield self.db.sendMetric(metric1, metric1, self.now, 9)
         yield self.db.sendMetric(metric2, metric2, self.now, 1)
-        yield self.trigger.check()
+        yield self.trigger.check(now=self.now + 60)
         yield self.assert_trigger_metric(metric1, 9, state.ERROR)
 
     @trigger('test-trigger-patterns2')
@@ -230,9 +232,8 @@ class DataTests(WorkerTests):
         yield self.db.sendMetric(pattern, metric, begin, 10)
         yield self.db.sendMetric(pattern, metric, begin + 60, 20)
         yield self.db.sendMetric(pattern, metric, begin + 120, 30)
-        yield self.trigger.check(fromTime=begin, now=begin + 120)
-        yield self.assert_trigger_metric('summarize(' + metric +
-                                         ', "10min", "sum")', 60, state.ERROR)
+        yield self.trigger.check(fromTime=begin, now=begin + 180)
+        yield self.assert_trigger_metric('summarize(' + metric + ', "10min", "sum")', 60, state.ERROR)
 
     @trigger('test-trigger-summarize-min')
     @inlineCallbacks
@@ -315,12 +316,10 @@ class DataTests(WorkerTests):
         yield self.db.sendMetric(metric, metric, self.now - 120, 20)
         yield self.db.sendMetric(metric, metric, self.now - 60, 30)
         yield self.trigger.check(now=self.now - 60)
-        yield self.assert_trigger_metric('movingAverage(' + metric +
-                                         ',3)', 10, state.OK)
+        yield self.assert_trigger_metric('movingAverage(' + metric + ',3)', 10, state.OK)
         yield self.db.sendMetric(metric, metric, self.now, 40)
         yield self.trigger.check(now=self.now)
-        yield self.assert_trigger_metric('movingAverage(' + metric +
-                                         ',3)', 20, state.WARN)
+        yield self.assert_trigger_metric('movingAverage(' + metric + ',3)', 20, state.WARN)
 
     @trigger('test-mem-free')
     @inlineCallbacks
@@ -671,10 +670,10 @@ class DataTests(WorkerTests):
         yield self.sendTrigger('{"name": "test trigger", "targets": [" \
                                maximumAbove(metric.*, 0)"], "warn_value": 60, "error_value": 90}')
         yield self.db.sendMetric("metric.one", "metric.one", self.now, 1)
-        yield self.trigger.check(now=self.now, cache_ttl=0)
+        yield self.trigger.check(now=self.now + 60, cache_ttl=0)
         yield self.db.cleanupMetricValues("metric.one", self.now + 3600)
         yield self.db.sendMetric("metric.two", "metric.two", self.now + 60, 1)
-        yield self.trigger.check(now=self.now + 60, cache_ttl=0)
+        yield self.trigger.check(now=self.now + 120, cache_ttl=0)
         yield self.assert_trigger_metric("metric.one", 1, state.OK)
 
     @trigger('test-schedule2')
@@ -747,3 +746,101 @@ class DataTests(WorkerTests):
         events, total = yield self.db.getEvents()
         self.assertEquals(total, 3)
         self.assertEquals(events[1]["state"], state.WARN)
+
+    @trigger('test-simple-trigger-realtime-behaviour')
+    @inlineCallbacks
+    def testSimpleTriggerRealtimeBehaviour(self):
+        metric = 'MoiraFuncTest.metric.one'
+        yield self.sendTrigger('{"name": "test trigger", "targets": ["' +
+                               metric + '"], "warn_value": 60, "error_value": 90, "ttl":600 }')
+
+        yield self.db.sendMetric(metric, metric, self.now - 60, 10)
+        yield self.trigger.check(now=self.now)
+        yield self.assert_trigger_metric(metric, 10, state.OK)
+
+        yield self.db.sendMetric(metric, metric, self.now, 100)
+        yield self.trigger.check(now=self.now)
+        yield self.assert_trigger_metric(metric, 100, state.ERROR)
+
+    @trigger('test-complex-trigger-conservative-behaviour')
+    @inlineCallbacks
+    def testComplexTriggerConservativeBehaviour(self):
+        metric = 'MoiraFuncTest.metric.one'
+        pattern = 'MoiraFuncTest.metric.*'
+        yield self.sendTrigger('{"name": "test trigger", "targets": ["' +
+                               pattern + '"], "warn_value": 60, "error_value": 90, "ttl":600 }')
+
+        yield self.db.sendMetric(pattern, metric, self.now - 60, 10)
+        yield self.trigger.check(now=self.now)
+        yield self.assert_trigger_metric(metric, 10, state.OK)
+
+        yield self.db.sendMetric(pattern, metric, self.now, 100)
+        yield self.trigger.check(now=self.now)
+        yield self.assert_trigger_metric(metric, 10, state.OK)
+
+        yield self.trigger.check(now=self.now + 60)
+        yield self.assert_trigger_metric(metric, 100, state.ERROR)
+
+
+    @trigger('test-trigger-on-multiple-metrics-does-not-produce-preliminary-real-time-alert')
+    @inlineCallbacks
+    def testComplexTriggerMultipleMetricsNoPreliminaryAlert(self):
+        metric1 = 'metric.one'
+        metric2 = 'metric.two'
+        pattern = 'metric.*'
+        target = 'maxSeries(movingAverage(%s, 3, \\"min\\"))' % pattern
+        targetMetric = 'maxSeries(movingAverage(metric.one,3),movingAverage(metric.two,3))'
+        yield self.sendTrigger(
+            '{"name": "tt", "targets": ["%s"], "warn_value": 99, "error_value": 100, "ttl":"600" }' % target)
+
+        yield self.db.sendMetric(pattern, metric1, self.now, 10)
+        yield self.db.sendMetric(pattern, metric2, self.now, 20)
+        yield self.db.sendMetric(pattern, metric1, self.now + 60, 110)
+        yield self.db.sendMetric(pattern, metric2, self.now + 60, 120)
+        yield self.db.sendMetric(pattern, metric1, self.now + 120, 210)
+        yield self.db.sendMetric(pattern, metric2, self.now + 120, 220)
+
+        yield self.trigger.check(now=self.now + 180)
+        yield self.assert_trigger_metric(targetMetric, 20, state.OK)
+
+        yield self.db.sendMetric(pattern, metric1, self.now + 180, 310)
+
+        yield self.trigger.check(now=self.now + 180)
+        yield self.assert_trigger_metric(targetMetric, 20, state.OK)
+
+        yield self.db.sendMetric(pattern, metric2, self.now + 180, 320)
+
+        yield self.trigger.check(now=self.now + 180)
+        yield self.assert_trigger_metric(targetMetric, 20, state.OK)
+
+        yield self.trigger.check(now=self.now + 240 - 1)
+        yield self.assert_trigger_metric(targetMetric, 20, state.OK)
+
+        yield self.trigger.check(now=self.now + 240)
+        yield self.assert_trigger_metric(targetMetric, 120., state.ERROR)
+
+
+    @trigger('test-moving-average-bootstrap-with-no-realtime-alerting')
+    @inlineCallbacks
+    def testMovingAverageBootstrapWithNoRealTimeAlerting(self):
+        yield self.movingAverageBootstrap(allowRealTimeAlerting=False)
+
+
+    @trigger('test-moving-average-bootstrap-with-realtime-alerting')
+    @inlineCallbacks
+    def testMovingAverageBootstrapWithRealTimeAlerting(self):
+        yield self.movingAverageBootstrap(allowRealTimeAlerting=True)
+
+    @inlineCallbacks
+    def movingAverageBootstrap(self, allowRealTimeAlerting):
+        yield self.sendTrigger(
+            '{"name": "t", "targets": ["movingAverage(m, 2)"],  "warn_value": 1, "error_value": 90, "ttl":"600" }')
+        for n in range(0, 10):
+            yield self.db.sendMetric('m', 'm', self.now - 60 * (10 - n), n)
+        yield self.trigger.check(fromTime=self.now - 300, now=self.now)
+        fromTime = str(self.now - 180)
+        endTime = str(self.now - 60)
+        rc = datalib.createRequestContext(fromTime, endTime, allowRealTimeAlerting)
+        result = yield self.trigger.get_timeseries(rc)
+        ts = result[1][0]
+        self.assertEqual(ts[0], 6.5)

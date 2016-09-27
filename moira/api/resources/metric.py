@@ -21,8 +21,9 @@ class Metrics(RedisResouce):
             defer.returnValue(bad_request(request, "Trigger not found"))
             raise StopIteration
 
-        context = createRequestContext(request.args.get('from')[0],
-                                       request.args.get('to')[0])
+        fromTime = request.args.get('from')[0]
+        endTime = request.args.get('to')[0]
+        context = createRequestContext(fromTime, endTime, allowRealTimeAlerting=True)
         result = {}
         for target in trigger.get("targets", [trigger.get("target")]):
             time_series = yield evaluateTarget(context, target)

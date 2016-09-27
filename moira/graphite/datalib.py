@@ -19,9 +19,11 @@ from twisted.internet import defer
 db = None
 
 
-def createRequestContext(fromTime, toTime):
+def createRequestContext(fromTime, endTime, allowRealTimeAlerting):
     return {'startTime': parseATTime(fromTime),
-            'endTime': parseATTime(toTime),
+            'endTime': parseATTime(endTime),
+            'bootstrap': False,
+            'allowRealTimeAlerting': allowRealTimeAlerting,
             'localOnly': False,
             'template': None,
             'graphite_patterns': {},
@@ -98,10 +100,31 @@ class TimeSeries(list):
             'values': list(self),
         }
 
-# Data retrieval API
-def extract(value):
-    parts = value.split()
-    return float(parts[1])
+
+def unpackTimeSeries(dataList, retention, startTime, endTime, bootstrap, allowRealTimeAlerting):
+
+    def getTimeSlot(timestamp):
+        return int((timestamp - startTime) / retention)
+
+    valuesList = []
+    for data in dataList:
+        points = {}
+        for value, timestamp in data:
+            points[getTimeSlot(timestamp)] = float(value.split()[1])
+
+        lastTimeSlot = getTimeSlot(endTime)
+
+        values = []
+        # note that right boundary is exclusive
+        for timeSlot in range(0, lastTimeSlot):
+            values.append(points.get(timeSlot))
+
+        lastPoint = points.get(lastTimeSlot)
+        if bootstrap or (allowRealTimeAlerting and lastPoint is not None):
+            values.append(lastPoint)
+
+        valuesList.append(values)
+    return valuesList
 
 
 @defer.inlineCallbacks
@@ -114,10 +137,11 @@ def fetchData(requestContext, pathExpr):
 
     startTime = int(epoch(requestContext['startTime']))
     endTime = int(epoch(requestContext['endTime']))
+    bootstrap = requestContext['bootstrap']
+    allowRealTimeAlerting = requestContext['allowRealTimeAlerting']
+
     seriesList = []
-
     metrics = list((yield db.getPatternMetrics(pathExpr)))
-
     if len(metrics) == 0:
         series = TimeSeries(pathExpr, startTime, startTime, 60, [])
         series.pathExpression = pathExpr
@@ -126,22 +150,21 @@ def fetchData(requestContext, pathExpr):
     else:
         first_metric = metrics[0]
         retention = yield db.getMetricRetention(first_metric, cache_key=first_metric, cache_ttl=60)
-        data = yield db.getMetricsValues(metrics, startTime, ("" if requestContext.get('delta') is None else "(") + str(endTime))
+        if bootstrap:
+            # in bootstrap mode in order to avoid overlapping of bootstrap time series with current time series
+            # we have to fetch all points up to the last retention time slot boundary preceding endTime
+            # not including that boundary because endTime is set to be equal startTime from the original requestContext
+            endTime -= int((endTime - startTime) % retention) + 1
+        dataList = yield db.getMetricsValues(metrics, startTime, endTime)
+        valuesList = unpackTimeSeries(dataList, retention, startTime, endTime, bootstrap, allowRealTimeAlerting)
         for i, metric in enumerate(metrics):
             requestContext['metrics'].add(metric)
-            points = {}
-            for value, timestamp in data[i]:
-                bucket = (int)((timestamp - startTime) / retention)
-                points[bucket] = extract(value)
-
-            values = [points.get((int)((timestamp - startTime) / retention)) for timestamp in xrange(startTime, endTime + retention, retention)]
-
             series = TimeSeries(
                 metric,
                 startTime,
                 endTime,
                 retention,
-                values)
+                valuesList[i])
             series.pathExpression = pathExpr
             seriesList.append(series)
 
