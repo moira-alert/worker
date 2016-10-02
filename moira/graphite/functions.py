@@ -1616,14 +1616,17 @@ def aliasByNode(requestContext, seriesList, *nodes):
       &target=aliasByNode(ganglia.*.cpu.load5,1)
 
     """
+    cb_pattern = re.compile(r"{([^,]+\,)*([^,])+}")
+    mp_pattern = re.compile(r"(?:.*\()?(?P<name>[-\w*\.]+)(?:,|\)?.*)?")
+    substitution = 'UNKNOWN'
     yield defer.succeed(None)
     if isinstance(nodes, int):
         nodes = [nodes]
     for series in seriesList:
-        
-        metric_pieces = re.search(
-            '(?:.*\()?(?P<name>[-\w*\.]+)(?:,|\)?.*)?',
-            re.sub('{([^,]+\,)*[^,]+}', 'UNKNOWN', series.name)).groups()[0].split('.')
+        curly_brackets = cb_pattern.search(series.name)
+        if curly_brackets:
+            substitution = curly_brackets.groups()[-1]
+        metric_pieces = mp_pattern.search(cb_pattern.sub(substitution, series.name)).groups()[0].split('.')
         series.name = '.'.join(metric_pieces[n] for n in nodes)
     returnValue(seriesList)
 

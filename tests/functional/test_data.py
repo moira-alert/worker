@@ -258,6 +258,16 @@ class DataTests(WorkerTests):
         yield self.trigger.check()
         yield self.assert_trigger_metric('one', 30, state.WARN)
 
+    @trigger('test-trigger-aliasbynode-nometrics')
+    @inlineCallbacks
+    def testAliasByNodeWithNoMetrics(self):
+        yield self.sendTrigger('{"name": "test trigger", "targets": ["aliasByNode( \
+                               movingAverage(m{1,2}, \'5min\'), 0)"], \
+                               "warn_value": 20, "error_value": 50, "ttl":"600" }')
+        yield self.trigger.check()
+        check = yield self.db.getTriggerLastCheck(self.trigger.id)
+        yield self.assert_trigger_metric('m2', None, state.NODATA)
+
     @trigger('test-trigger-group')
     @inlineCallbacks
     def testGroupBy(self):
