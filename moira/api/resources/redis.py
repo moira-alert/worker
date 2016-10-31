@@ -28,7 +28,7 @@ class RedisResouce(Resource):
     def save_trigger(self, request, trigger_id, message):
         _, existing = yield self.db.getTrigger(trigger_id)
 
-        yield self.db.accuireTriggerCheckLock(trigger_id, 10)
+        yield self.db.acquireTriggerCheckLock(trigger_id, 10)
         last_check = yield self.db.getTriggerLastCheck(trigger_id)
         if last_check:
             for metric in list(last_check.get('metrics', {})):

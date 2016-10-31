@@ -43,7 +43,7 @@ class Metrics(RedisResouce):
             defer.returnValue(bad_request(request, "Trigger not found"))
             raise StopIteration
 
-        yield self.db.accuireTriggerCheckLock(self.trigger_id, 10)
+        yield self.db.acquireTriggerCheckLock(self.trigger_id, 10)
 
         last_check = yield self.db.getTriggerLastCheck(self.trigger_id)
 
