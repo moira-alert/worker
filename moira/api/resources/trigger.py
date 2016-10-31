@@ -6,14 +6,14 @@ from twisted.web import http
 
 from moira.api.request import delayed, check_json
 from moira.api.resources.metric import Metrics
-from moira.api.resources.redis import RedisResouce
+from moira.api.resources.redis import RedisResource
 
 
-class State(RedisResouce):
+class State(RedisResource):
 
     def __init__(self, db, trigger_id):
         self.trigger_id = trigger_id
-        RedisResouce.__init__(self, db)
+        RedisResource.__init__(self, db)
 
     @delayed
     @defer.inlineCallbacks
@@ -24,11 +24,11 @@ class State(RedisResouce):
         self.write_json(request, result)
 
 
-class Throttling(RedisResouce):
+class Throttling(RedisResource):
 
     def __init__(self, db, trigger_id):
         self.trigger_id = trigger_id
-        RedisResouce.__init__(self, db)
+        RedisResource.__init__(self, db)
 
     @delayed
     @defer.inlineCallbacks
@@ -43,11 +43,11 @@ class Throttling(RedisResouce):
         request.finish()
 
 
-class Maintenance(RedisResouce):
+class Maintenance(RedisResource):
 
     def __init__(self, db, trigger_id):
         self.trigger_id = trigger_id
-        RedisResouce.__init__(self, db)
+        RedisResource.__init__(self, db)
 
     @delayed
     @check_json
@@ -57,11 +57,11 @@ class Maintenance(RedisResouce):
         request.finish()
 
 
-class Trigger(RedisResouce):
+class Trigger(RedisResource):
 
     def __init__(self, db, trigger_id):
         self.trigger_id = trigger_id
-        RedisResouce.__init__(self, db)
+        RedisResource.__init__(self, db)
         self.putChild("state", State(db, trigger_id))
         self.putChild("throttling", Throttling(db, trigger_id))
         self.putChild("metrics", Metrics(db, trigger_id))
@@ -92,10 +92,10 @@ class Trigger(RedisResouce):
         request.finish()
 
 
-class Triggers(RedisResouce):
+class Triggers(RedisResource):
 
     def __init__(self, db):
-        RedisResouce.__init__(self, db)
+        RedisResource.__init__(self, db)
         self.putChild("page", Page(db))
 
     def getChild(self, path, request):
@@ -116,10 +116,10 @@ class Triggers(RedisResouce):
         yield self.save_trigger(request, trigger_id, "trigger created")
 
 
-class Page(RedisResouce):
+class Page(RedisResource):
 
     def __init__(self, db):
-        RedisResouce.__init__(self, db)
+        RedisResource.__init__(self, db)
 
     @delayed
     @defer.inlineCallbacks

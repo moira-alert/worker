@@ -4,14 +4,14 @@ from twisted.internet import defer
 
 from moira.api.request import bad_request
 from moira.api.request import delayed
-from moira.api.resources.redis import RedisResouce
+from moira.api.resources.redis import RedisResource
 
 
-class Metrics(RedisResouce):
+class Metrics(RedisResource):
 
     def __init__(self, db, trigger_id):
         self.trigger_id = trigger_id
-        RedisResouce.__init__(self, db)
+        RedisResource.__init__(self, db)
 
     @delayed
     @defer.inlineCallbacks
@@ -43,7 +43,7 @@ class Metrics(RedisResouce):
             defer.returnValue(bad_request(request, "Trigger not found"))
             raise StopIteration
 
-        yield self.db.accuireTriggerCheckLock(self.trigger_id, 10)
+        yield self.db.acquireTriggerCheckLock(self.trigger_id, 10)
 
         last_check = yield self.db.getTriggerLastCheck(self.trigger_id)
 

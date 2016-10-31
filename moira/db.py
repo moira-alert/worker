@@ -923,7 +923,7 @@ class Db(service.Service):
         """
         setTriggerCheckLock(self, trigger_id)
 
-        Try to accuire lock for trigger check {0}
+        Try to acquire lock for trigger check {0}
 
         :param trigger_id: trigger identity
         :type trigger_id: string
@@ -933,25 +933,25 @@ class Db(service.Service):
         defer.returnValue(ok)
 
     @defer.inlineCallbacks
-    def accuireTriggerCheckLock(self, trigger_id, timeout):
+    def acquireTriggerCheckLock(self, trigger_id, timeout):
         """
-        accuireTriggerCheckLock(self, trigger_id, timeout)
+        acquireTriggerCheckLock(self, trigger_id, timeout)
 
-        Try to accuire lock for trigger check until timeout
+        Try to acquire lock for trigger check until timeout
 
         :param trigger_id: trigger identity
         :type trigger_id: string
         :param timeout: timeout in seconds
         :type timeout: float
         """
-        accuired = yield self.setTriggerCheckLock(trigger_id)
+        acquired = yield self.setTriggerCheckLock(trigger_id)
         count = 0
-        while accuired is None and count < timeout:
+        while acquired is None and count < timeout:
             count += 1
             yield task.deferLater(reactor, 0.5, lambda: None)
-            accuired = yield self.setTriggerCheckLock(trigger_id)
-        if accuired is None:
-            raise Exception("Can not accuire trigger lock in {0} seconds".format(timeout))
+            acquired = yield self.setTriggerCheckLock(trigger_id)
+        if acquired is None:
+            raise Exception("Can not acquire trigger lock in {0} seconds".format(timeout))
 
     @defer.inlineCallbacks
     @docstring_parameters(TRIGGER_CHECK_LOCK_PREFIX.format("<trigger_id>"))

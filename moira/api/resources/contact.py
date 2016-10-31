@@ -1,14 +1,14 @@
 from twisted.internet import defer
 
 from moira.api.request import delayed, check_json
-from moira.api.resources.redis import RedisResouce
+from moira.api.resources.redis import RedisResource
 
 
-class Contact(RedisResouce):
+class Contact(RedisResource):
 
     def __init__(self, db, contact_id):
         self.contact_id = contact_id
-        RedisResouce.__init__(self, db)
+        RedisResource.__init__(self, db)
 
     @delayed
     @defer.inlineCallbacks
@@ -20,7 +20,7 @@ class Contact(RedisResouce):
         request.finish()
 
 
-class Contacts(RedisResouce):
+class Contacts(RedisResource):
     def getChild(self, path, request):
         if not path:
             return self

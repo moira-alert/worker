@@ -1,14 +1,14 @@
 from twisted.internet import defer
 
 from moira.api.request import delayed
-from moira.api.resources.redis import RedisResouce
+from moira.api.resources.redis import RedisResource
 
 
-class Pattern(RedisResouce):
+class Pattern(RedisResource):
 
     def __init__(self, db, pattern):
         self.pattern = pattern
-        RedisResouce.__init__(self, db)
+        RedisResource.__init__(self, db)
 
     @delayed
     @defer.inlineCallbacks
@@ -17,10 +17,10 @@ class Pattern(RedisResouce):
         request.finish()
 
 
-class Patterns(RedisResouce):
+class Patterns(RedisResource):
 
     def __init__(self, db):
-        RedisResouce.__init__(self, db)
+        RedisResource.__init__(self, db)
 
     def getChild(self, path, request):
         if not path:

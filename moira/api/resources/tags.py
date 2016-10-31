@@ -2,13 +2,13 @@ from twisted.internet import defer
 from twisted.web import http
 
 from moira.api.request import delayed, check_json
-from moira.api.resources.redis import RedisResouce
+from moira.api.resources.redis import RedisResource
 
 
-class Stats(RedisResouce):
+class Stats(RedisResource):
 
     def __init__(self, db):
-        RedisResouce.__init__(self, db)
+        RedisResource.__init__(self, db)
 
     @delayed
     @defer.inlineCallbacks
@@ -28,11 +28,11 @@ class Stats(RedisResouce):
         self.write_json(request, {"list": result})
 
 
-class Data(RedisResouce):
+class Data(RedisResource):
 
     def __init__(self, db, tag):
         self.tag = tag
-        RedisResouce.__init__(self, db)
+        RedisResource.__init__(self, db)
 
     @delayed
     @check_json
@@ -43,11 +43,11 @@ class Data(RedisResouce):
         request.finish()
 
 
-class Tag(RedisResouce):
+class Tag(RedisResource):
 
     def __init__(self, db, tag):
         self.tag = tag
-        RedisResouce.__init__(self, db)
+        RedisResource.__init__(self, db)
         self.putChild("data", Data(db, tag))
 
     @delayed
@@ -66,10 +66,10 @@ class Tag(RedisResouce):
             self.write_json(request, {"message": "tag deleted"})
 
 
-class Tags(RedisResouce):
+class Tags(RedisResource):
 
     def __init__(self, db):
-        RedisResouce.__init__(self, db)
+        RedisResource.__init__(self, db)
         self.putChild("stats", Stats(db))
 
     def getChild(self, path, request):

@@ -35,8 +35,8 @@ class TriggersCheck:
         try:
             trigger_id = yield self.db.getTriggerToCheck()
             while trigger_id is not None:
-                accuired = yield self.db.setTriggerCheckLock(trigger_id)
-                if accuired is not None:
+                acquired = yield self.db.setTriggerCheckLock(trigger_id)
+                if acquired is not None:
                     start = reactor.seconds()
                     trigger = Trigger(trigger_id, self.db)
                     yield trigger.check()

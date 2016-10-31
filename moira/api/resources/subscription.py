@@ -3,14 +3,14 @@ from moira.graphite.util import epoch
 from twisted.internet import defer
 
 from moira.api.request import delayed, check_json
-from moira.api.resources.redis import RedisResouce
+from moira.api.resources.redis import RedisResource
 
 
-class Test(RedisResouce):
+class Test(RedisResource):
 
     def __init__(self, db, sub_id):
         self.sub_id = sub_id
-        RedisResouce.__init__(self, db)
+        RedisResource.__init__(self, db)
 
     @delayed
     @defer.inlineCallbacks
@@ -26,11 +26,11 @@ class Test(RedisResouce):
         request.finish()
 
 
-class Subscription(RedisResouce):
+class Subscription(RedisResource):
 
     def __init__(self, db, sub_id):
         self.sub_id = sub_id
-        RedisResouce.__init__(self, db)
+        RedisResource.__init__(self, db)
         self.putChild("test", Test(db, sub_id))
 
     @delayed
@@ -41,10 +41,10 @@ class Subscription(RedisResouce):
         request.finish()
 
 
-class Subscriptions(RedisResouce):
+class Subscriptions(RedisResource):
 
     def __init__(self, db):
-        RedisResouce.__init__(self, db)
+        RedisResource.__init__(self, db)
 
     def getChild(self, path, request):
         if not path:
