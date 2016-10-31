@@ -6,5 +6,3 @@ Twisted==15.2.1
 txredisapi
 ujson
 pyyaml
-fakeredis
-flake8

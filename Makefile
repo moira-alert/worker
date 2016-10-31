@@ -9,7 +9,7 @@ VENDOR := "SKB Kontur"
 URL := "https://github.com/moira-alert"
 LICENSE := "GPLv3"
 
-default: clean prepare test pip
+default: clean prepare prepare_test test pip
 
 version:
 	echo $(PIP_VERSION) > version.txt
@@ -17,9 +17,15 @@ version:
 prepare:
 	$(PIP) install -r requirements.txt
 
+prepare_test:
+	$(PIP) install fakeredis
+	$(PIP) install coveralls
+	$(PIP) install flake8
+
 test:
 	coverage run --source="moira" --omit="moira/graphite/*,moira/metrics/*" $(TRIAL) tests.unit tests.functional
-
+	flake8 --max-line-length=120 --exclude=moira/graphite moira
+	
 pip: version
 	$(PYTHON) setup.py sdist
 

@@ -10,11 +10,9 @@ notifications:
     on_start: never
 install:
   - make prepare
-  - pip install flake8
-  - pip install coveralls
+  - make prepare_test
 script:
   - make test
-  - flake8 --max-line-length=120 --exclude=moira/graphite moira
 after_success:
   - coveralls
   - make pip
