@@ -1,13 +1,13 @@
 from twisted.internet import defer
 
 from moira.api.request import delayed
-from moira.api.resources.redis import RedisResouce
+from moira.api.resources.redis import RedisResource
 
 
-class Notifications(RedisResouce):
+class Notifications(RedisResource):
 
     def __init__(self, db):
-        RedisResouce.__init__(self, db)
+        RedisResource.__init__(self, db)
 
     @delayed
     @defer.inlineCallbacks

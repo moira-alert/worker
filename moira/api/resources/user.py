@@ -1,13 +1,13 @@
 from twisted.internet import defer
 
 from moira.api.request import delayed
-from moira.api.resources.redis import RedisResouce
+from moira.api.resources.redis import RedisResource
 
 
-class Login(RedisResouce):
+class Login(RedisResource):
 
     def __init__(self, db):
-        RedisResouce.__init__(self, db)
+        RedisResource.__init__(self, db)
         self.putChild("settings", Settings(db))
 
     @delayed
@@ -16,10 +16,10 @@ class Login(RedisResouce):
         self.write_json(request, {'login': login})
 
 
-class Settings(RedisResouce):
+class Settings(RedisResource):
 
     def __init__(self, db):
-        RedisResouce.__init__(self, db)
+        RedisResource.__init__(self, db)
 
     @delayed
     @defer.inlineCallbacks

@@ -6,7 +6,7 @@ from moira.api.request import check_trigger, check_json
 from moira.checker import state
 
 
-class RedisResouce(Resource):
+class RedisResource(Resource):
 
     def __init__(self, db):
         Resource.__init__(self)

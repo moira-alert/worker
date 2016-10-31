@@ -4,14 +4,14 @@ from twisted.internet import defer
 
 from moira.api.request import bad_request
 from moira.api.request import delayed
-from moira.api.resources.redis import RedisResouce
+from moira.api.resources.redis import RedisResource
 
 
-class Metrics(RedisResouce):
+class Metrics(RedisResource):
 
     def __init__(self, db, trigger_id):
         self.trigger_id = trigger_id
-        RedisResouce.__init__(self, db)
+        RedisResource.__init__(self, db)
 
     @delayed
     @defer.inlineCallbacks
