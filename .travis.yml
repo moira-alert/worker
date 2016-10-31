@@ -16,6 +16,16 @@ script:
 after_success:
   - coveralls
   - make pip
+  - |
+      body='{"request": {"branch":"master"}}'
+      curl -s -X POST \
+        -H "Content-Type: application/json" \
+        -H "Accept: application/json" \
+        -H "Travis-API-Version: 3" \
+        -H "Authorization: token ${TOKEN}" \
+        -d "$body" \
+        https://api.travis-ci.org/repo/moira-alert%2Fpython-moira-client/requests
+
 before_deploy:
   - export RELEASE_PIP_TAR=$(ls dist/moira_worker-*.tar.gz)
 deploy:
