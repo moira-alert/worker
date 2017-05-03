@@ -14,12 +14,12 @@ class Notifications(RedisResource):
     def render_GET(self, request):
         notifications, total = yield self.db.getNotifications(request.args.get('start')[0],
                                                               request.args.get('end')[0])
-        self.write_json(request, {"list": notifications, "total": total})
+        self.write_json(request, {"list": list(notifications), "total": total})
 
     @delayed
     @defer.inlineCallbacks
     def render_DELETE(self, request):
-        result = yield self.db.removeNotification(request.args.get('json')[0])
+        result = yield self.db.removeNotification(request.args.get('id')[0])
         self.write_json(request, {"result": result})
 
     def getChild(self, path, request):

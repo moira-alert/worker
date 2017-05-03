@@ -13,7 +13,6 @@ from moira.checker.worker import TriggersCheck
 
 
 class DataTests(WorkerTests):
-
     @inlineCallbacks
     def sendTrigger(self, trigger):
         body = client.FileBodyProducer(StringIO(trigger))
@@ -192,13 +191,55 @@ class DataTests(WorkerTests):
         yield self.assert_trigger_metric(metric1, 1, state.OK)
         yield self.assert_trigger_metric(metric2, None, None)
 
+    @trigger('test-trigger-exclude-with-moving-average')
+    @inlineCallbacks
+    def testExcludeWithMovingAverage(self):
+        pattern = 'MoiraFuncTest.supervisord.host.*.state'
+        metric1 = 'MoiraFuncTest.supervisord.host.one.state'
+        metric2 = 'MoiraFuncTest.supervisord.host.two.state'
+        yield self.sendTrigger('{"name": "test trigger", "targets": ["exclude(movingAverage(' + pattern +
+                               ', 3), \'two\')"], "warn_value": 20, "error_value": 30, "ttl":"600" }')
+
+        yield self.db.sendMetric(pattern, metric1, self.now - 180, 10)
+        yield self.db.sendMetric(pattern, metric1, self.now - 120, 20)
+        yield self.db.sendMetric(pattern, metric1, self.now - 60, 30)
+
+        yield self.db.sendMetric(pattern, metric2, self.now - 180, 30)
+        yield self.db.sendMetric(pattern, metric2, self.now - 120, 40)
+        yield self.db.sendMetric(pattern, metric2, self.now - 60, 50)
+
+        yield self.trigger.check(now=self.now)
+        yield self.assert_trigger_metric('movingAverage(' + metric1 + ',3)', 20, state.WARN)
+        yield self.assert_trigger_metric('movingAverage(' + metric2 + ',3)', None, None)
+
+    @trigger('test-trigger-moving-average-with-exclude')
+    @inlineCallbacks
+    def testMovingAverageWithExclude(self):
+        pattern = 'MoiraFuncTest.supervisord.host.*.state'
+        metric1 = 'MoiraFuncTest.supervisord.host.one.state'
+        metric2 = 'MoiraFuncTest.supervisord.host.two.state'
+        yield self.sendTrigger('{"name": "test trigger", "targets": ["movingAverage(exclude(' + pattern +
+                               ', \'two\'), 3)"], "warn_value": 20, "error_value": 30, "ttl":"600" }')
+
+        yield self.db.sendMetric(pattern, metric1, self.now - 180, 10)
+        yield self.db.sendMetric(pattern, metric1, self.now - 120, 20)
+        yield self.db.sendMetric(pattern, metric1, self.now - 60, 30)
+
+        yield self.db.sendMetric(pattern, metric2, self.now - 180, 30)
+        yield self.db.sendMetric(pattern, metric2, self.now - 120, 40)
+        yield self.db.sendMetric(pattern, metric2, self.now - 60, 50)
+
+        yield self.trigger.check(now=self.now)
+        yield self.assert_trigger_metric('movingAverage(' + metric1 + ',3)', 20, state.WARN)
+        yield self.assert_trigger_metric('movingAverage(' + metric2 + ',3)', None, None)
+
     @trigger('test-trigger-transformNull')
     @inlineCallbacks
     def testTransformNull(self):
         pattern = 'MoiraFuncTest.supervisord.host.*.state'
         metric1 = 'MoiraFuncTest.supervisord.host.one.state'
         yield self.sendTrigger(trigger='{"name": "test trigger", "targets": ["movingAverage(transformNull(' + pattern +
-                               ', 0),2)"], "warn_value": 20, "error_value": 50, "ttl":"600" }')
+                                       ', 0),2)"], "warn_value": 20, "error_value": 50, "ttl":"600" }')
         yield self.db.sendMetric(pattern, metric1, self.now - 180, 5)
         yield self.db.sendMetric(pattern, metric1, self.now - 60, 5)
         yield self.trigger.check()
@@ -791,7 +832,6 @@ class DataTests(WorkerTests):
         yield self.trigger.check(now=self.now + 60)
         yield self.assert_trigger_metric(metric, 100, state.ERROR)
 
-
     @trigger('test-trigger-on-multiple-metrics-does-not-produce-preliminary-real-time-alert')
     @inlineCallbacks
     def testComplexTriggerMultipleMetricsNoPreliminaryAlert(self):
@@ -829,12 +869,10 @@ class DataTests(WorkerTests):
         yield self.trigger.check(now=self.now + 240)
         yield self.assert_trigger_metric(targetMetric, 120., state.ERROR)
 
-
     @trigger('test-moving-average-bootstrap-with-no-realtime-alerting')
     @inlineCallbacks
     def testMovingAverageBootstrapWithNoRealTimeAlerting(self):
         yield self.movingAverageBootstrap(allowRealTimeAlerting=False)
-
 
     @trigger('test-moving-average-bootstrap-with-realtime-alerting')
     @inlineCallbacks

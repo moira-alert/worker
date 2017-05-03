@@ -115,6 +115,7 @@ def docstring_parameters(*sub):
         return obj
     return dec
 
+
 audit_log = None
 
 
@@ -680,18 +681,25 @@ class Db(service.Service):
 
     @defer.inlineCallbacks
     @docstring_parameters(NOTIFIER_NOTIFICATIONS)
-    def removeNotification(self, json):
+    def removeNotification(self, id):
         """
-        removeNotification(self, json)
+        removeNotification(self, id)
 
-        Remove planning notification by given json from sorted set {0}
+        Remove planning notification by id string from sorted set {0}
 
-        :param json: notification json
-        :type json: string
+        :param id: notification id string
+        :type id: string
         """
-
-        result = yield self.rc.zrem(NOTIFIER_NOTIFICATIONS, json)
-        defer.returnValue(result)
+        notifications, total = yield self.getNotifications(0, -1)
+        for json in notifications:
+            notification = anyjson.loads(json)
+            timestamp = str(notification.get('timestamp'))
+            contact_id = notification.get('contact', {}).get('id')
+            sub_id = notification.get('event', {}).get('sub_id')
+            idstr = ''.join([timestamp, contact_id, sub_id])
+            if idstr == id:
+                result = yield self.rc.zrem(NOTIFIER_NOTIFICATIONS, json)
+                defer.returnValue(result)
 
     @defer.inlineCallbacks
     @docstring_parameters(TAG_TRIGGERS_PREFIX.format("<tag>"))

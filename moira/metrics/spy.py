@@ -47,5 +47,6 @@ class Spy(object):
             summary += batch['sum']
         return {"sum": summary, "count": count}
 
+
 TRIGGER_CHECK = Spy()
 TRIGGER_CHECK_ERRORS = Spy()
