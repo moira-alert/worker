@@ -7,6 +7,7 @@ from twisted.internet import defer
 from twisted.web import http, server
 
 from moira.checker.expression import getExpression
+from moira.checker import state
 from moira.trigger import trigger_reformat
 from moira.logs import log
 
@@ -91,7 +92,8 @@ def check_trigger(f):
             log.error("Invalid trigger format [{json}]: {e}", json=json, e=e)
             defer.returnValue(bad_request(request, "Invalid trigger format"))
         expression_values = {'warn_value': json.get('warn_value'),
-                             'error_value': json.get('error_value')}
+                             'error_value': json.get('error_value'),
+                             'PREV_STATE': state.NODATA}
         try:
             yield resolve_patterns(request, expression_values)
         except Exception as e:
