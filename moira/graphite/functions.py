@@ -1163,6 +1163,13 @@ def movingAverage(requestContext, seriesList, windowSize, func='avg'):
 
     returnValue(result)
 
+@inlineCallbacks
+def movingMax(requestContext, seriesList, windowSize):
+    return movingAverage(requestContext, seriesList, windowSize, func='max')
+
+@inlineCallbacks
+def movingMin(requestContext, seriesList, windowSize):
+    return movingAverage(requestContext, seriesList, windowSize, func='min')
 
 @inlineCallbacks
 def cumulative(requestContext, seriesList, consolidationFunc='sum'):
@@ -3961,6 +3968,8 @@ SeriesFunctions = {
 
     # Calculate functions
     'movingAverage': movingAverage,
+    'movingMax': movingMax,
+    'movingMin': movingMin,
     'movingMedian': movingMedian,
     'stdev': stdev,
     'holtWintersForecast': holtWintersForecast,
