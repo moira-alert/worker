@@ -1165,11 +1165,93 @@ def movingAverage(requestContext, seriesList, windowSize, func='avg'):
 
 @inlineCallbacks
 def movingMax(requestContext, seriesList, windowSize):
-    return movingAverage(requestContext, seriesList, windowSize, func='max')
+    yield defer.succeed(None)
+    if not seriesList:
+        returnValue([])
+    windowInterval = None
+    if isinstance(windowSize, basestring):
+        delta = parseTimeOffset(windowSize)
+        windowInterval = abs(delta.seconds + (delta.days * 86400))
+
+    if windowInterval:
+        bootstrapSeconds = windowInterval
+    else:
+        bootstrapSeconds = max([s.step for s in seriesList]) * int(windowSize)
+
+    bootstrapList = yield _fetchWithBootstrap(requestContext, seriesList, seconds=bootstrapSeconds)
+    result = []
+
+    for bootstrap, series in zip(bootstrapList, seriesList):
+        if windowInterval:
+            windowPoints = windowInterval / series.step
+        else:
+            windowPoints = int(windowSize)
+
+        if isinstance(windowSize, basestring):
+            newName = 'movingMax(%s,"%s")' % (series.name, windowSize)
+        else:
+            newName = "movingMax(%s,%s)" % (series.name, windowSize)
+        newSeries = TimeSeries(
+            newName,
+            series.start,
+            series.end,
+            series.step,
+            [])
+        newSeries.pathExpression = newName
+
+        offset = len(bootstrap) - len(series)
+        for i in range(len(series)):
+            window = bootstrap[i + offset - windowPoints + 1:i + offset + 1]
+            newSeries.append(safeMax(window))
+
+        result.append(newSeries)
+
+    returnValue(result)
 
 @inlineCallbacks
 def movingMin(requestContext, seriesList, windowSize):
-    return movingAverage(requestContext, seriesList, windowSize, func='min')
+    yield defer.succeed(None)
+    if not seriesList:
+        returnValue([])
+    windowInterval = None
+    if isinstance(windowSize, basestring):
+        delta = parseTimeOffset(windowSize)
+        windowInterval = abs(delta.seconds + (delta.days * 86400))
+
+    if windowInterval:
+        bootstrapSeconds = windowInterval
+    else:
+        bootstrapSeconds = max([s.step for s in seriesList]) * int(windowSize)
+
+    bootstrapList = yield _fetchWithBootstrap(requestContext, seriesList, seconds=bootstrapSeconds)
+    result = []
+
+    for bootstrap, series in zip(bootstrapList, seriesList):
+        if windowInterval:
+            windowPoints = windowInterval / series.step
+        else:
+            windowPoints = int(windowSize)
+
+        if isinstance(windowSize, basestring):
+            newName = 'movingMin(%s,"%s")' % (series.name, windowSize)
+        else:
+            newName = "movingMin(%s,%s)" % (series.name, windowSize)
+        newSeries = TimeSeries(
+            newName,
+            series.start,
+            series.end,
+            series.step,
+            [])
+        newSeries.pathExpression = newName
+
+        offset = len(bootstrap) - len(series)
+        for i in range(len(series)):
+            window = bootstrap[i + offset - windowPoints + 1:i + offset + 1]
+            newSeries.append(safeMin(window))
+
+        result.append(newSeries)
+
+    returnValue(result)
 
 @inlineCallbacks
 def cumulative(requestContext, seriesList, consolidationFunc='sum'):

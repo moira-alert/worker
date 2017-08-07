@@ -372,6 +372,36 @@ class DataTests(WorkerTests):
         yield self.trigger.check(now=self.now)
         yield self.assert_trigger_metric('movingAverage(' + metric + ',3)', 20, state.WARN)
 
+    @trigger('test-trigger-moving-min')
+    @inlineCallbacks
+    def testMovingMin(self):
+        metric = 'MoiraFuncTest.system.test.physicaldisk.one-drive.diskqueuelength2'
+        yield self.sendTrigger('{"name": "test trigger", "targets": ["movingMin(' + metric +
+                               ',3)"],  "warn_value": 20, "error_value": 30, "ttl":"600" }')
+        yield self.db.sendMetric(metric, metric, self.now - 180, 10)
+        yield self.db.sendMetric(metric, metric, self.now - 120, 20)
+        yield self.db.sendMetric(metric, metric, self.now - 60, 30)
+        yield self.trigger.check(now=self.now - 60)
+        yield self.assert_trigger_metric('movingMin(' + metric + ',3)', 10, state.OK)
+        yield self.db.sendMetric(metric, metric, self.now, 40)
+        yield self.trigger.check(now=self.now)
+        yield self.assert_trigger_metric('movingMin(' + metric + ',3)', 20, state.WARN)
+
+    @trigger('test-trigger-moving-max')
+    @inlineCallbacks
+    def testMovingMax(self):
+        metric = 'MoiraFuncTest.system.test.physicaldisk.one-drive.diskqueuelength3'
+        yield self.sendTrigger('{"name": "test trigger", "targets": ["movingMax(' + metric +
+                               ',3)"],  "warn_value": 30, "error_value": 20, "ttl":"600" }')
+        yield self.db.sendMetric(metric, metric, self.now - 180, 30)
+        yield self.db.sendMetric(metric, metric, self.now - 120, 20)
+        yield self.db.sendMetric(metric, metric, self.now - 60, 10)
+        yield self.trigger.check(now=self.now - 60)
+        yield self.assert_trigger_metric('movingMax(' + metric + ',3)', 30, state.WARN)
+        yield self.db.sendMetric(metric, metric, self.now, 40)
+        yield self.trigger.check(now=self.now)
+        yield self.assert_trigger_metric('movingMax(' + metric + ',3)', 40, state.OK)
+
     @trigger('test-mem-free')
     @inlineCallbacks
     def testMemoryCalculation(self):
